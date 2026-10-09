@@ -1,9 +1,10 @@
 -- src/game/game.lua
 -- The beat memory game. The board plays a beat with its lights (and the level's MIDI), then
--- the player copies it on Q W / A S or with the mouse. Each light is a button from the level
--- editor: pressing its pad within the leeway of its start plays the MIDI notes inside it;
--- anything else plays the pad's sound mangled (wrong_sound.*). Rounds grow the pattern like
--- Simon, a button at a time (flow.grow); failing costs a life.
+-- the pads flash green on the next beat and the player copies it on Q W / A S or with the
+-- mouse. Each light is a button from the level editor; the turn is judged on the sequence,
+-- not the timing: pressing the pad due next plays the MIDI notes inside its button, anything
+-- else plays the pad's sound mangled (wrong_sound.*). Rounds grow the pattern like Simon, a
+-- button at a time (flow.grow); failing costs a life.
 --
 -- What it plays: the songs in songs/ (src/game/song.lua), or with none, every level in
 -- levels/ in file-name order, or one level (--level). In a song the levels build on each
@@ -42,6 +43,9 @@ local CHASE = { 1, 2, 4, 3 }   -- clockwise round the board: Q W S A
 
 local function round(x) return math.floor(x + 0.5) end
 local function db(x) return 10 ^ (x / 20) end
+
+-- the lives a game starts with: rules.lives, or with 0, as many tries as it takes
+local function startLives(J) return J.rules.lives > 0 and J.rules.lives or math.huge end
 
 -- opts: level (one level file), song (one song file), from (start a song at this level, the
 -- ones before it already built), autoplay (the bot plays every turn)
@@ -122,9 +126,10 @@ function Game:loadLevel(index)
   self.fpb = RATE * self.spb
 end
 
--- in a song, rounds snap to the level's loop length so it stays in time with the loops under it
+-- Every demo starts on a bar; in a song, on the level's loop length so it stays in time with the
+-- loops under it. (The turn has no set length, so the next round starts wherever it ends.)
 function Game:align()
-  return self.song and Level.beats(self.level) or nil
+  return self.song and Level.beats(self.level) or 4
 end
 
 -- silence, nothing scheduled: the pads just play their samples
@@ -143,7 +148,7 @@ function Game:toTitle()
   self:idleAudio()
   self.state = "title"
   self.score, self.combo = 0, 0
-  self.lives = self.J.rules.lives
+  self.lives = startLives(self.J)
   self.rounds, self.round, self.judge = {}, nil, nil
   self.locked = {}
   self:setStatus("BEAT EM UP", "text")
@@ -162,7 +167,7 @@ end
 
 function Game:newGame()
   self.score, self.combo = 0, 0
-  self.lives = self.J.rules.lives
+  self.lives = startLives(self.J)
   self.locked = {}
   local from = self.song and math.max(1, math.min(tonumber(self.opts.from) or 1, #self.levels)) or 1
   -- starting part-way into a song: the levels before are already built
@@ -198,7 +203,6 @@ function Game:beginTimeline(number, startBeat)
   self.mixer.onBlock = function(f0, f1) self:schedule(f0, f1) end
   self.timeline = true
   self.autoplayRound = nil
-  self:queueNextRound(self.round)
 end
 
 -- in a song: the next level starts at `beat` on the same timeline, the loops still playing
@@ -208,17 +212,6 @@ function Game:continueLevel(index, beat)
   self.round = self.rounds[1]
   self.judge = Round.Judge.new(self.round, self.J, self.level.bpm)
   self:startBacking(self.round.byName.demo.from)
-  self:queueNextRound(self.round)
-end
-
--- With rules.on_fail = continue the next round doesn't depend on how this one goes, so it is
--- laid out now: its demo starts the moment this turn ends, before the turn is even judged.
-function Game:queueNextRound(r)
-  if self.J.rules.on_fail ~= "continue" or r.next or r.number >= Round.count(self.prep, self.J) then return end
-  r.next = Round.new(self.prep, self.J, r.number + 1, r.finish, self:align())
-  table.insert(self.rounds, r.next)
-  -- only the rounds that can still sound or light are kept
-  while #self.rounds > 3 do table.remove(self.rounds, 1) end
 end
 
 ------------------------------------------------------------------------
@@ -305,11 +298,13 @@ function Game:lockIn(part, from)
 end
 
 -- How loud a locked-in loop plays at song beat `beat`: song.locked_volume under a level being
--- built, so the new part is center stage; full during a level's gold celebration.
+-- built, so the new part is center stage (times that level's under_gain in the song file);
+-- full during a level's gold celebration.
 function Game:lockedGain(beat)
   local c = self.celebrate
   if c and beat >= c.from and beat < c.to then return 1 end
-  return self.J.song.locked_volume
+  local part = self.song and self.song.parts[self.levelIndex]
+  return self.J.song.locked_volume * (part and part.underGain or 1)
 end
 
 -- mixer.onBlock: clicks, the demo's notes, the notes no button plays during the turn, and
@@ -324,7 +319,7 @@ function Game:schedule(f0, f1)
       if mode ~= "off" then
         for beat = math.ceil(b0), math.min(math.ceil(b1), quietFrom) - 1 do
           local phase = r:phaseAt(beat)
-          if phase and (mode == "always" or phase == "count" or phase == "gap") then
+          if phase and (mode == "always" or phase == "count") then
             local accent = beat % 4 == 0
             mx:play(accent and self.clicks.accent or self.clicks.click, round(beat * self.fpb), J.audio.click_volume)
           end
@@ -385,6 +380,8 @@ function Game:flash(pad, kind, color)
     f.dur, f.color = Li.wrong_s, Li.wrong_color
   elseif kind == "miss" then
     f.dur, f.color = Li.miss_s, Li.miss_color
+  elseif kind == "fail" then
+    f.dur, f.color = Li.fail_s, Li.wrong_color
   end
   self.flashes[#self.flashes + 1] = f
 end
@@ -420,14 +417,9 @@ function Game:hit(pad)
     self:flash(pad, "wrong")
     self:shake()
   else
-    local at
-    if self.J.timing.snap_early then
-      at = round((h.expected.t + self.J.timing.audio_offset_ms / 1000) * RATE)
-    end
-    self:playButton(h.button, at)
+    self:playButton(h.button)
     self.combo = self.combo + 1
-    local S = self.J.scoring
-    self.score = self.score + (h.kind == "perfect" and S.perfect or S.good) * self:multiplier()
+    self.score = self.score + self.J.scoring.correct * self:multiplier()
     self:pulse(pad, h.button)
   end
   return h
@@ -481,28 +473,35 @@ end
 -- rounds
 ------------------------------------------------------------------------
 
+-- The turn is over (the sequence complete, the guess wrong, or given up): the round finishes
+-- there and the next is laid out from there, its demo on the next bar (in a song, the loop
+-- grid) at least flow.rest_beats on.
 function Game:resolveRound()
   local r, j, J = self.round, self.judge, self.J
   r.resolved = true
+  r:endTurn(j.endT / self.spb)
   local passed = j:passed()
   local total = Round.count(self.prep, J)
-  -- the turn is judged a moment after it ends (the leeway); the next demo may already be going
-  local now = self:heard() / self.spb
+  -- nothing can be scheduled before what the mixer has already mixed
+  local from = math.max(r.finish, self.mixer.cursor / self.fpb)
   self.resultUntil = r.finish + J.flow.result_beats
+  -- a wrong guess: all four pads flash red
+  if not passed then
+    for i = 1, 4 do self:flash(i, "fail") end
+  end
   if passed or J.rules.on_fail == "continue" then
     -- a sloppy round carries on too (on_fail = continue): it just doesn't earn the round bonus
     if passed then self.score = self.score + J.scoring.round_bonus end
-    local allPerfect = j.counts.perfect == #j.expected and j.counts.wrong == 0
     if r.number >= total then
       self.score = self.score + J.scoring.level_bonus
       self:levelCleared(r)
     else
       if passed then
-        self:setStatus(allPerfect and "PERFECT!" or "NICE!", "good")
+        self:setStatus(j.counts.wrong == 0 and "PERFECT!" or "NICE!", "good")
       else
         self:setStatus("KEEP GOING", "text")
       end
-      self.pending = { kind = "round", at = r.finish, round = r.next or Round.new(self.prep, J, r.number + 1, math.max(r.finish, math.ceil(now)), self:align()) }
+      self.pending = { kind = "round", at = r.finish, round = Round.new(self.prep, J, r.number + 1, from, self:align()) }
     end
   else
     self.lives = self.lives - 1
@@ -513,12 +512,12 @@ function Game:resolveRound()
     else
       self:setStatus("TRY AGAIN", "bad")
       local number = J.rules.on_fail == "restart_level" and 1 or r.number
-      -- the round to play again is only known now, so it starts on the next beat
-      self.pending = { kind = "round", at = r.finish, round = Round.new(self.prep, J, number, math.max(r.finish, math.ceil(now)), self:align()) }
+      self.pending = { kind = "round", at = r.finish, round = Round.new(self.prep, J, number, from, self:align()) }
+      self.pending.round.retry = true
     end
   end
   local nextRound = self.pending.round
-  if nextRound and nextRound ~= r.next then table.insert(self.rounds, nextRound) end
+  if nextRound then table.insert(self.rounds, nextRound) end
   -- only the rounds that can still sound or light are kept
   while #self.rounds > 3 do table.remove(self.rounds, 1) end
 end
@@ -582,7 +581,6 @@ function Game:advance(beat)
   if p.kind == "round" then
     self.round = p.round
     self.judge = Round.Judge.new(self.round, self.J, self.level.bpm)
-    self:queueNextRound(self.round)
   elseif p.kind == "next_level" then
     self:continueLevel(self.levelIndex + 1, p.at)
   elseif p.kind == "finale" then
@@ -605,27 +603,23 @@ function Game:advance(beat)
   end
 end
 
--- the bot: plays the turn perfectly ("perfect") or with sloppy timing and a wrong pad ("sloppy")
+-- The bot plays the sequence back in time, as the demo had it ("perfect"), or "sloppy": a
+-- wrong pad before the second button, then it forgets the rest after the second, so the
+-- grace runs out (with only two buttons it finishes, one mistake down).
 function Game:autoplay(t)
   local mode = self.autoplayRound == self.round and self.autoplayMode or ((self.J.debug.autoplay or self.opts.autoplay) and "perfect")
   if not mode or not self.judge then return end
   self.botNext = self.botNext or 1
   local e = self.judge.expected[self.botNext]
-  if not e then return end
-  local err = 0
-  if mode == "sloppy" then
-    local w = self.J.timing.good_ms / 1000
-    err = ({ 0.2, -0.6, 1.4, 0.1, -0.3, 0.8, 0.5, -1.2 })[(self.botNext - 1) % 8 + 1] * w
+  if not e or t < e.t then return end
+  if mode == "sloppy" and self.botNext == 2 and not self.botSlipped then
+    self.botSlipped = true
+    self:hit(e.pad % 4 + 1)
+    return
   end
-  if t >= e.t + err then
-    self.botNext = self.botNext + 1
-    if mode == "sloppy" and self.botNext % 7 == 0 then
-      self:hit(e.pad % 4 + 1)   -- the wrong pad
-    elseif not (mode == "sloppy" and self.botNext % 5 == 0) then   -- and the odd note forgotten
-      self:hit(e.pad)
-      self.pads[e.pad].downAt = self.time
-    end
-  end
+  if mode == "sloppy" and self.botNext == 3 then return end
+  self.botNext = self.botNext + 1
+  self:hit(e.pad)
 end
 
 ------------------------------------------------------------------------
@@ -674,26 +668,24 @@ function Game:update(dt)
     local beat = t / self.spb
     local r = self.round
     if not r.resolved then
-      if self.botNext and self.botRound ~= r then self.botNext, self.botRound = 1, r end
+      if self.botNext and self.botRound ~= r then self.botNext, self.botRound, self.botSlipped = 1, r, nil end
       self.botRound = r
       self:autoplay(t)
+      -- the player stalled: the pads that were due go red
       for _, e in ipairs(self.judge:sweep(t)) do
+        if e.group == self.judge.next then self:flash(e.pad, "miss") end
         self.combo = 0
-        self:flash(e.pad, "miss")
         self:shake()
       end
-      if self.judge:done(t) then self:resolveRound() end
-      local phase, into, p = r:phaseAt(beat)
+      if self.judge:done() then self:resolveRound() end
+      local phase = r:phaseAt(beat)
       local celebrating = self.celebrate and beat < self.celebrate.to
       if celebrating or (self.resultUntil and beat < self.resultUntil) then
         -- the gold strobe, or the last round's result, is still up
-      elseif phase == "count" and r.number == 1 and self.song then
+      elseif phase == "count" and r.number == 1 and self.song and not r.retry then
         self:setStatus(self.level.name:upper(), "text", ("LEVEL %d OF %d"):format(self.levelIndex, #self.levels))
       elseif phase == "count" or phase == "demo" then
         self:setStatus("WATCH", "text")
-      elseif phase == "gap" then
-        local left = math.ceil((p.to - p.from) - into)
-        self:setStatus("YOUR TURN", "accent", J.flow.show_count and left <= J.flow.gap_beats and tostring(left) or nil)
       elseif phase == "play" then
         self:setStatus("YOUR TURN", "accent")
       end
@@ -707,17 +699,17 @@ end
 ------------------------------------------------------------------------
 
 -- the gold strobe after a level is cleared: a flash every 1/song.clear_flashes_per_beat of a
--- beat chasing round the board, all four at once (and whiter) on the beat
+-- beat chasing round the board, all four at once (and whiter) on the beat. It comes on the
+-- moment the turn ends, which can be between beats, so it keeps to the timeline's beats.
 function Game:celebrationLights(out, beat)
   local c = self.celebrate
   if not c or beat < c.from or beat >= c.to then return false end
   local S = self.J.song
-  local into = beat - c.from
   local per = S.clear_flashes_per_beat
-  local step = math.floor(into * per)
-  local env = (1 - (into * per - step)) ^ 2
+  local step = math.floor(beat * per)
+  local env = (1 - (beat * per - step)) ^ 2
   local onBeat = step % per == 0
-  local beatEnv = (1 - math.min(1, (into - math.floor(into)) * 4)) ^ 2
+  local beatEnv = (1 - math.min(1, (beat - math.floor(beat)) * 4)) ^ 2
   for i = 1, 4 do
     local hit = onBeat or CHASE[step % 4 + 1] == i or CHASE[(step + 2) % 4 + 1] == i
     local o = out[i]
@@ -809,6 +801,16 @@ function Game:lightState()
           end
         end
       end
+      -- your turn: all four flash green on its first beat, then pulse dimly on every beat
+      -- until it's over (each a tap, like a button's light)
+      local r = self.round
+      local play = r and not r.resolved and r.byName.play
+      if play and beat >= play.from then
+        local n = math.floor(beat - play.from)
+        local env = Lights.envelope(t - (play.from + n) * self.spb, Li.attack_s, Lights.hold(J), Li.decay_s)
+        local lvl = env * (n == 0 and Li.turn_level or Li.turn_pulse_level)
+        for i = 1, 4 do offer(i, Li.turn_color, lvl) end
+      end
     end
   end
 
@@ -849,7 +851,7 @@ function Game:drawHud()
     text(big, tostring(self.score), L.hud_margin, L.title_y - 6, 400, "left", L.accent_color)
     local m = self:multiplier()
     if m > 1 then text(small, "x" .. m, L.hud_margin, L.title_y + T.hud_size + 2, 400, "left", L.accent_color) end
-    -- lives, right (none when nothing can fail: rules.on_fail = continue)
+    -- lives, right (none when there are none to lose: on_fail = continue, or lives = 0)
     local r = T.hud_size * 0.3
     for i = 1, J.rules.on_fail == "continue" and 0 or J.rules.lives do
       local x = W - L.hud_margin - (J.rules.lives - i) * r * 3 - r
@@ -922,37 +924,6 @@ function Game:drawHud()
   end
 end
 
--- debug.show_timing: where each note of the turn is due, and where each hit landed
-function Game:drawTiming()
-  if not (self.J.debug.show_timing and self.judge and self.state == "play") then return end
-  local J = self.J
-  local W = self.screen.W
-  local x0, x1, y = 200, W - 200, self.screen.H - 16
-  local j = self.judge
-  local a, b = j.playFrom, j.playTo
-  local function X(t) return x0 + (t - a) / (b - a) * (x1 - x0) end
-  love.graphics.setColor(1, 1, 1, 0.15)
-  love.graphics.rectangle("fill", x0, y, x1 - x0, 1)
-  local w = J.timing.good_ms / 1000
-  for _, e in ipairs(j.expected) do
-    local c = self.level.pads[e.pad].color
-    love.graphics.setColor(c[1], c[2], c[3], 0.25)
-    love.graphics.rectangle("fill", X(e.t - w), y - 6, X(e.t + w) - X(e.t - w), 12)
-    love.graphics.setColor(c)
-    love.graphics.rectangle("fill", X(e.t) - 1, y - 8, 2, 16)
-  end
-  for _, h in ipairs(j.hits) do
-    local c = h.kind == "wrong" and J.lights.wrong_color or J.layout.good_color
-    love.graphics.setColor(c)
-    love.graphics.circle("fill", X(h.t), y + 14, 4)
-  end
-  local t = self:heard()
-  if t >= a - w and t <= b + w then
-    love.graphics.setColor(1, 1, 1, 0.8)
-    love.graphics.rectangle("fill", X(t), y - 12, 1, 24)
-  end
-end
-
 function Game:draw(x, y, w, h)
   local J = self.J
   self.screen:setViewport(x or 0, y or 0, w or love.graphics.getWidth(), h or love.graphics.getHeight())
@@ -968,7 +939,6 @@ function Game:draw(x, y, w, h)
   end
   Pads.draw(J, { pads = self:lightState(), shakeX = sx, shakeY = sy })
   self:drawHud()
-  self:drawTiming()
 
   self.screen:finish()
 end
@@ -977,13 +947,13 @@ end
 -- juice editor scenarios: drop the game straight into a moment and show it
 ------------------------------------------------------------------------
 
+-- the turn judged at once, as it starts: the whole sequence right, or a wrong guess
 function Game:forceResult(pass)
-  local r = self.round
-  for i, e in ipairs(self.judge.expected) do
-    e.state = (pass or i % 3 ~= 0) and "perfect" or "miss"
-    self.judge.counts[e.state] = self.judge.counts[e.state] + 1
-  end
-  if not pass then self.judge.counts.miss = self.judge.counts.miss + self.J.rules.mistakes_allowed + 1 end
+  local r, j = self.round, self.judge
+  for _, e in ipairs(j.expected) do e.state = pass and "correct" or nil end
+  j.counts.correct = pass and #j.expected or 0
+  j.counts.wrong = pass and 0 or self.J.rules.mistakes_allowed + 1
+  j.outcome, j.endT = pass and "complete" or "wrong", j.startT
   self:resolveRound()
   return r
 end
@@ -1010,7 +980,7 @@ function Game:scenario(id)
     return
   end
   self.score, self.combo = 1250, 6
-  self.lives = self.J.rules.lives
+  self.lives = startLives(self.J)
   self.locked = {}
   self:loadLevel(math.min(self.levelIndex or 1, #self.levels))
   if id == "intro" then
@@ -1034,22 +1004,26 @@ function Game:scenario(id)
     -- the level's last round, judged as passed the moment the turn ends
     local last = Round.count(self.prep, self.J)
     self:beginTimeline(last)
-    self:beginTimeline(last, self.round.finish)
+    self:beginTimeline(last, self.round.byName.play.from)
     self:forceResult(true)
     return
   end
-  self:beginTimeline(1)
+  -- the sloppy bot needs three buttons to forget the third
+  local number = id == "sloppy" and math.min(3, Round.count(self.prep, self.J)) or 1
+  self:beginTimeline(number)
   local r = self.round
   if id == "watch" then return end
   if id == "turn" or id == "autoplay" or id == "sloppy" then
-    self:beginTimeline(1, r.byName.gap.from)
+    -- from the demo's last beat, so the green flash lands
+    self:beginTimeline(number, r.byName.play.from - 1)
     if id ~= "turn" then
       self.autoplayRound, self.autoplayMode, self.botNext, self.botRound = self.round, id == "autoplay" and "perfect" or "sloppy", 1, self.round
+      self.botSlipped = nil
     end
     return
   end
-  -- results: the turn already judged as it starts, so the result word shows across it and
-  -- into the next round's demo (which follows the turn straight on)
+  -- results: the turn judged as it starts, so the result word shows over the wait for the
+  -- next round's demo
   self:beginTimeline(1, r.byName.play.from)
   if id == "clear" then
     self:forceResult(true)

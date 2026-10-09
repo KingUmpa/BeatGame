@@ -49,8 +49,12 @@ function tests.a_song_round_trips(T)
   local back = Song.normalize(json.decode(Song.toJson(song)), "x")
   T.eq(back.name, song.name); T.eq(back.bpm, song.bpm)
   T.eq(#back.parts, #song.parts)
-  for i, p in ipairs(song.parts) do T.eq(back.parts[i].path, p.path); T.eq(back.parts[i].vo, p.vo) end
+  for i, p in ipairs(song.parts) do
+    T.eq(back.parts[i].path, p.path); T.eq(back.parts[i].vo, p.vo); T.eq(back.parts[i].underGain, p.underGain)
+  end
   T.eq(back.finale.file, song.finale.file)
+  T.eq(song.parts[2].underGain, 0.8, "the bass plays 20% quieter under the synth")
+  T.eq(song.parts[3].underGain, nil, "and as it is under the chops")
 end
 
 -- a locked-in loop repeats its length from song beat 0, from the beat it was locked in

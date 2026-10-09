@@ -1,7 +1,7 @@
 {
   "backing": {
     "file": "Inputs/test_a/samples/Background Tracks/Huntin_ Wabbitz (Flip)_Instrumental_Clip_No_Samples_Loop.wav",
-    "gain": 1
+    "gain": 0.6
   },
   "bars": 1,
   "bpm": 114,

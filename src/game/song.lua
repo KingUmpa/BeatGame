@@ -8,6 +8,8 @@
 --   {
 --     "format": 1, "name": "Huntin Wabbits", "bpm": 114,
 --     "levels": [ { "level": "levels/huntin_wabbits_bass.json", "vo": "assets/audio/vo/nice.wav" }, ... ],
+--     (a level can also have "under_gain": 0.8 -- the loops locked in under it play that much
+--     quieter, on top of juice's song.locked_volume, while it is being built)
 --     "finale": { "file": "...Huntin_ Wabbitz (Flip).wav", "gain": 1, "beat": 0 }
 --   }
 -- Every level plays at the song's BPM. The loops share one grid from the song's first beat:
@@ -17,7 +19,7 @@
 -- falls in the file (0 = its first frame); its lights follow that grid.
 --
 --   Song.list() -> { "songs/x.json", ... }
---   Song.load(path) -> { path, name, bpm, parts = { { path, level, vo } }, finale }
+--   Song.load(path) -> { path, name, bpm, parts = { { path, level, vo, underGain } }, finale }
 --   Song.toJson(song) / Song.save(song)
 --   Song.loopEvents(notes, length, b0, b1, from) -> { { beat, note } }   a loop's notes in [b0, b1)
 --   Song.analyze(sample, framesPerStep, offsetFrames) -> { low, high, steps }   loudness per step, 0-1
@@ -63,7 +65,8 @@ function Song.normalize(raw, path)
     if type(file) ~= "string" then error(("%s: level %d has no \"level\" file"):format(path or "song", i), 2) end
     local ok, lv = pcall(Level.load, file)
     if not ok then error(("%s: level %d: %s"):format(path or "song", i, tostring(lv)), 2) end
-    song.parts[#song.parts + 1] = { path = file, level = lv, vo = type(e) == "table" and type(e.vo) == "string" and e.vo or nil }
+    local entry = type(e) == "table" and e or {}
+    song.parts[#song.parts + 1] = { path = file, level = lv, vo = type(entry.vo) == "string" and entry.vo or nil, underGain = tonumber(entry.under_gain) }
   end
   song.bpm = song.bpm or (song.parts[1] and song.parts[1].level.bpm) or 120
   for _, p in ipairs(song.parts) do p.level.bpm = song.bpm end
@@ -83,7 +86,7 @@ end
 
 function Song.toJson(song)
   local out = { format = 1, name = song.name, bpm = song.bpm, levels = {} }
-  for i, p in ipairs(song.parts) do out.levels[i] = { level = p.path, vo = p.vo } end
+  for i, p in ipairs(song.parts) do out.levels[i] = { level = p.path, vo = p.vo, under_gain = p.underGain } end
   if song.finale then out.finale = { file = song.finale.file, gain = song.finale.gain, beat = song.finale.beat } end
   return json.encode(out, { indent = "  " }) .. "\n"
 end

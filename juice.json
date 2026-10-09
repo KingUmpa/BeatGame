@@ -8,8 +8,7 @@
     "velocity_sensitivity": 0.35
   },
   "debug": {
-    "autoplay": false,
-    "show_timing": false
+    "autoplay": false
   },
   "display": {
     "fullscreen": false,
@@ -32,13 +31,14 @@
     "count_in_beats": 4,
     "demo_repeats": 1,
     "demo_sound": true,
-    "gap_beats": 4,
+    "grace_beats": 4,
     "grow": "buttons",
+    "rest_beats": 1,
     "result_beats": 2,
-    "show_count": true,
     "start_bars": 1,
     "start_buttons": 1,
-    "title_s": 1.6
+    "title_s": 1.6,
+    "wait_beats": 16
   },
   "hot_reload": {
     "enabled": true,
@@ -108,6 +108,7 @@
     "decay_s": 0.3,
     "demo_level": 1,
     "edge_bleed": 0.7,
+    "fail_s": 0.8,
     "glow_size": 64,
     "glow_strength": 0.9,
     "hold_s": 0.1,
@@ -119,6 +120,13 @@
     ],
     "miss_s": 0.5,
     "press_level": 0,
+    "turn_color": [
+      0.2,
+      1,
+      0.35
+    ],
+    "turn_level": 1,
+    "turn_pulse_level": 0.1,
     "velocity_brightness": 0.4,
     "wrong_color": [
       1,
@@ -149,17 +157,16 @@
   },
   "rules": {
     "extra_press_is_mistake": true,
-    "lives": 3,
+    "lives": 0,
     "mistakes_allowed": 1,
-    "on_fail": "continue"
+    "on_fail": "retry_round"
   },
   "schema_version": 1,
   "scoring": {
     "combo_max": 4,
     "combo_step": 8,
-    "good": 50,
+    "correct": 100,
     "level_bonus": 1000,
-    "perfect": 100,
     "round_bonus": 250
   },
   "song": {
@@ -186,9 +193,8 @@
   },
   "timing": {
     "audio_offset_ms": 0,
-    "good_ms": 220,
-    "perfect_ms": 45,
-    "snap_early": false
+    "early_ms": 150,
+    "together_ms": 50
   },
   "type": {
     "font": "bungee",

@@ -13,6 +13,7 @@
     },
     {
       "level": "levels/huntin_wabbits_synth.json",
+      "under_gain": 0.8,
       "vo": "assets/audio/vo/great.wav"
     },
     {

@@ -3,10 +3,10 @@
 A beat memory game in LÖVE 11.5. A 2x2 drum pad (grey rubber pads with RGB lights under
 them) demos a beat with its lights; then you play it back on **Q W / A S** or with the mouse.
 
-Each light is a **button** programmed over the level's MIDI. A press of the right pad when
-the light comes on plays the MIDI notes inside that button, whether that's one note or
-several. Presses out of time or on the wrong pad sound mangled: pitched down, low-passed
-and distorted.
+Each light is a **button** programmed over the level's MIDI. You copy the **sequence**, at
+your own speed: a press of the pad that's next plays the MIDI notes inside that button,
+whether that's one note or several. A press of any other pad sounds mangled: pitched down,
+low-passed and distorted.
 
 A **song** is levels built up one on top of another, like Simon: you build the first level's
 loop a button at a time; clearing it locks that loop in and it keeps playing under the next
@@ -53,11 +53,13 @@ The launcher finds LÖVE (PATH, Program Files, `..\CounterCatch\tools\cache`) or
 1. **Count-in** (the level's name): only before a level's first round, `flow.count_in_beats`.
 2. **The demo** (WATCH): the board plays the pattern with its lights, and its sound unless
    `flow.demo_sound` is off.
-3. **A countdown** (YOUR TURN 4 3 2 1).
-4. **Your turn**: the same length as the pattern.
+3. **Your turn** (YOUR TURN): on the beat the demo ends, all four pads flash green
+   (`lights.turn_*`), then pulse green at 10% on every beat until your turn is over. It lasts
+   as long as you take: it ends when the sequence is complete, or wrong (see Judging).
 
-The next round's demo starts as your turn ends; the result (PERFECT!, NICE!, KEEP GOING) shows
-over its first `flow.result_beats` beats.
+The next round's demo starts on the next bar at least `flow.rest_beats` after your turn (in a
+song, on the loop grid); the result (PERFECT!, NICE!, KEEP GOING) shows for
+`flow.result_beats` beats.
 
 **The pattern grows like Simon** (`flow.grow = buttons`): each round adds the next step until
 the whole loop is built. A step is a **round** drawn in the level editor (all the buttons inside
@@ -74,34 +76,43 @@ round has and each adds.) The pattern runs to the end of the bar its last button
   under everything, and the next level starts on the same beat grid with no break.
 - **Later levels** are built over the loops already locked in (no metronome), which play at
   `song.locked_volume` (60%) so the part being built is center stage; during a level's gold
-  celebration its loop plays at full volume.
+  celebration its loop plays at full volume. A level can turn the loops under it down further
+  with `"under_gain"` on its entry in the song file (Huntin Wabbits: 0.8 under the Synth, so
+  the bass plays at 48% there).
 - **After the last level** the song's full track plays from its start and the pads go off in
   time with it: the bottom pads ride its low end, the top pads its highs, a white flash on
   every bar (`song.finale_*`). The pads still play. Space finishes.
 
 The loops stay in time because they share one grid from the song's first beat: a level n beats
-long always plays its beat (song beat mod n), and each round's demo and turn start on a
-multiple of the level's length (the countdown, and a pattern shorter than the loop, wait
-for the grid; a cleared level's gold runs on until the next level's count-in lands on it). So a 1-bar
-level over a 2-bar loop lines up the way it would in Ableton.
+long always plays its beat (song beat mod n), and each round's demo starts on a multiple of
+the level's length (after your turn the next demo waits for the grid; a cleared level's gold
+runs on until the next level's count-in lands on it). So a 1-bar level over a 2-bar loop lines
+up the way it would in Ableton. A level is locked in the moment you finish it, on the beat its
+loop has reached by then.
 
 A level's samples start where their sound starts: silence at the front of a `.wav` (bounces
 often carry 100 ms of it) is skipped, so a press sounds the moment it lands.
 
 **Judging.**
 
-- **What counts:** a press is judged against the start of a button due on that pad, which
-  is when its light comes on, not against the individual notes inside it.
-- **Correct:** within `timing.good_ms` (PERFECT within `timing.perfect_ms`) it plays the
-  button's notes, keeping their spacing.
-- **Wrong:** anything else is a wrong press and plays that pad's sound mangled.
-- **Missed:** a button never pressed is a miss.
-- **Nothing fails** (`rules.on_fail = continue`): a round with more than
-  `rules.mistakes_allowed` mistakes carries on to the next round anyway, it just scores less
-  (no round bonus, the combo resets, a missed button earns nothing). There are no lives.
-  (`retry_round` and `restart_level` bring back TRY AGAIN, lives and game over.)
-- **Notes outside every button** play along on their own, or stay silent; that's a
-  per-level setting.
+- **What counts:** the order, not the timing. Press the buttons' pads in the order the demo
+  lit them, as fast or slow as you like. Buttons that start within `timing.together_ms` of
+  each other (they light together) can go in either order. A press up to `timing.early_ms`
+  before the green flash already counts.
+- **Correct:** the pad that's next plays its button's notes, keeping their spacing.
+  Finishing the sequence is PERFECT!, or NICE! if a wrong press was forgiven.
+- **Wrong:** any other pad is a wrong press and plays that pad's sound mangled. You carry on
+  from where you were; one more than `rules.mistakes_allowed` (1) and the guess is wrong.
+- **Too slow:** you have `flow.wait_beats` (16) from the green flash to start. Once you've
+  started, stalling gives the guess up: `flow.grace_beats` (4) past when the next button
+  would be due if you were playing in time. The pad that was due flashes red.
+- **A wrong guess** flashes all four pads red (`lights.fail_s`) and you play that round again
+  (TRY AGAIN, `rules.on_fail = retry_round`): the same demo, the same sequence, until you get
+  it. You never move on without getting it right. There are no lives (`rules.lives = 0`);
+  set lives to bring back game over. (`restart_level` sends you back to the level's first
+  round instead; `continue` carries on to the next round anyway, just scoring less.)
+- **Notes outside every button** play along on their own (once, from the green flash, until
+  your turn is over), or stay silent; that's a per-level setting.
 - **Exclusive** (per level): normally a key cuts only its own previous note. With
   exclusive on, the moment any note triggers it cuts every sound still ringing: demo,
   your presses, wrong hits and free notes alike. Notes on the same tick still sound
@@ -124,8 +135,8 @@ This works like CounterCatch's Juice tuner.
   - Orange keys need a restart.
 - **Right: the real game, live.**
   - Scenario buttons drop it into a moment and replay it: title, level intro, the demo,
-    your turn, an autoplayed turn, a sloppy turn (late, early and wrong hits, a forgotten
-    note), round clear, level clear (the gold strobe, then the next level), round fail,
+    your turn, an autoplayed turn, a sloppy turn (a wrong press, then it stalls part-way and
+    the grace runs out), round clear, level clear (the gold strobe, then the next level), round fail,
     game over, the finale.
   - **HEAR** plays each pad clean or wrong, so the Wrong Sound sliders can be heard as they
     move.
@@ -137,14 +148,14 @@ Keys worth knowing:
 
 | Key | Does |
 |---|---|
-| `timing.good_ms` | the leeway |
-| `timing.perfect_ms` | the PERFECT window |
+| `flow.wait_beats` | how long the player has to start their turn (0 = forever) |
+| `flow.grace_beats` | how long they can stall part-way through before the guess counts as wrong |
 | `wrong_sound.*` | `pitch_semitones`, `lowpass_hz`, `resonance` (how much it rings/grates), `drive` (grit, never louder), `volume_db` |
-| `lights.*` | glow size and strength, light leaking round the edges, attack/hold/decay, velocity -> brightness, feedback colors |
+| `lights.*` | glow size and strength, light leaking round the edges, attack/hold/decay, velocity -> brightness, feedback colors, the green "your turn" flash and pulse (`turn_*`) |
 | `pads.*` | the rubber's grey, translucency (how much the light shows through), press squash |
-| `flow.*` | count-in, demo repeats, countdown, how the pattern grows (`grow`: Simon-style buttons, or bars) |
+| `flow.*` | count-in, demo repeats, the turn's wait and grace, how the pattern grows (`grow`: Simon-style buttons, or bars) |
 | `song.*` | the gold celebration (length, color, flashes per beat, pop), the VO line's volume and beat, the finale's lights |
-| `rules.*` | mistakes allowed, what a sloppy round does (`on_fail`: carry on, retry, restart), lives |
+| `rules.*` | mistakes allowed, what a wrong guess does (`on_fail`: retry, restart, carry on), lives (0 = no game over) |
 
 ## The level editor
 

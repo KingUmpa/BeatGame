@@ -4,8 +4,8 @@
 --
 --   local Juice = require("src.config.juice")
 --   Juice.load()                       -- reads juice.json (missing keys -> defaults)
---   Juice.data.timing.good_ms          -- validated values; the table stays the same object
---   Juice.set("timing.good_ms", 90)    -- validated live change (the editor's sliders)
+--   Juice.data.timing.early_ms         -- validated values; the table stays the same object
+--   Juice.set("timing.early_ms", 90)   -- validated live change (the editor's sliders)
 --   Juice.onChange(function(keys) end) -- after a reload or a set
 --   Juice.update(dt)                   -- polls the file for hot reload
 --   Juice.write()                      -- writes every key back to juice.json

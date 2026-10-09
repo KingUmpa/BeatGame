@@ -8,17 +8,17 @@ local tests = {}
 function tests.defaults_validate_cleanly(T)
   local data, issues = Juice.validate(Juice.defaults())
   T.eq(#issues, 0, "no issues: " .. table.concat(issues, "; "))
-  T.eq(data.timing.good_ms, 220)
+  T.eq(data.flow.grace_beats, 4)
   T.eq(data.wrong_sound.lowpass_hz, 650)
 end
 
 function tests.numbers_are_clamped_and_ints_rounded(T)
   local raw = Juice.defaults()
-  raw.timing.good_ms = 9999
+  raw.timing.early_ms = 9999
   raw.flow.demo_repeats = 2.6
   raw.wrong_sound.pitch_semitones = -100
   local data, issues = Juice.validate(raw)
-  T.eq(data.timing.good_ms, 500)
+  T.eq(data.timing.early_ms, 500)
   T.eq(data.flow.demo_repeats, 3)
   T.eq(data.wrong_sound.pitch_semitones, -24)
   T.ok(#issues == 2, "two clamp warnings, got " .. #issues)
@@ -33,14 +33,14 @@ function tests.bad_values_fall_back_to_defaults(T)
   local data = Juice.validate(raw)
   T.eq(data.audio.metronome, "count_ins")
   T.eq(data.lights.wrong_color[1], 1.0)
-  T.eq(data.rules.lives, 3)
+  T.eq(data.rules.lives, 0)
   T.eq(data.layout.frame, true)
 end
 
 function tests.missing_keys_get_defaults_and_unknown_keys_survive(T)
-  local data, issues = Juice.validate({ timing = { good_ms = 80 }, future = { thing = 1 } })
-  T.eq(data.timing.good_ms, 80)
-  T.eq(data.timing.perfect_ms, 45)
+  local data, issues = Juice.validate({ timing = { early_ms = 80 }, future = { thing = 1 } })
+  T.eq(data.timing.early_ms, 80)
+  T.eq(data.timing.together_ms, 50)
   T.eq(data.future.thing, 1)
   local unknown = false
   for _, i in ipairs(issues) do if i:find("future.thing", 1, true) then unknown = true end end
