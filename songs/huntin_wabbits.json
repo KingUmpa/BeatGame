@@ -1,0 +1,24 @@
+{
+  "bpm": 114,
+  "finale": {
+    "beat": 0,
+    "file": "Inputs/test_a/samples/Background Tracks/Huntin_ Wabbitz (Flip).wav",
+    "gain": 1
+  },
+  "format": 1,
+  "levels": [
+    {
+      "level": "levels/huntin_wabbits_bass.json",
+      "vo": "assets/audio/vo/nice.wav"
+    },
+    {
+      "level": "levels/huntin_wabbits_synth.json",
+      "vo": "assets/audio/vo/great.wav"
+    },
+    {
+      "level": "levels/01_huntin_wabbits.json",
+      "vo": "assets/audio/vo/amazing.wav"
+    }
+  ],
+  "name": "Huntin Wabbits"
+}

@@ -1,0 +1,144 @@
+{
+  "bars": 2,
+  "bpm": 114,
+  "buttons": [
+    {
+      "end": 352,
+      "key_high": 41,
+      "key_low": 41,
+      "pad": 2,
+      "start": 16,
+      "track": 1
+    },
+    {
+      "end": 383,
+      "key_high": 50,
+      "key_low": 43,
+      "pad": 3,
+      "start": 359,
+      "track": 1
+    },
+    {
+      "end": 639,
+      "key_high": 47,
+      "key_low": 47,
+      "pad": 1,
+      "start": 407,
+      "track": 1
+    },
+    {
+      "end": 710,
+      "key_high": 48,
+      "key_low": 48,
+      "pad": 4,
+      "start": 646,
+      "track": 1
+    },
+    {
+      "end": 779,
+      "key_high": 47,
+      "key_low": 47,
+      "pad": 1,
+      "start": 719,
+      "track": 1
+    }
+  ],
+  "exclusive": true,
+  "format": 2,
+  "metronome": "off",
+  "midi": "levels/huntin_wabbits_synth.mid",
+  "name": "Synth",
+  "pads": [
+    {
+      "color": [
+        0.2,
+        0.55,
+        1
+      ]
+    },
+    {
+      "color": [
+        0.25,
+        0.95,
+        0.45
+      ]
+    },
+    {
+      "color": [
+        1,
+        0.55,
+        0.12
+      ]
+    },
+    {
+      "color": [
+        0.95,
+        0.25,
+        0.8
+      ]
+    }
+  ],
+  "rounds": [
+    {
+      "end": 639,
+      "key_high": 50,
+      "key_low": 43,
+      "start": 359,
+      "track": 1
+    },
+    {
+      "end": 779,
+      "key_high": 48,
+      "key_low": 47,
+      "start": 646,
+      "track": 1
+    }
+  ],
+  "sounds": [
+    {
+      "key": 41,
+      "label": "F",
+      "sample": "Inputs/huntin_wabbits/Synth/F.wav",
+      "track": 1
+    },
+    {
+      "key": 43,
+      "label": "D+G",
+      "sample": "Inputs/huntin_wabbits/Synth/DG.wav",
+      "track": 1
+    },
+    {
+      "key": 45,
+      "label": "A",
+      "sample": "Inputs/huntin_wabbits/Synth/A.wav",
+      "track": 1
+    },
+    {
+      "key": 47,
+      "label": "B",
+      "sample": "Inputs/huntin_wabbits/Synth/B.wav",
+      "track": 1
+    },
+    {
+      "key": 48,
+      "label": "C",
+      "sample": "Inputs/huntin_wabbits/Synth/C.wav",
+      "track": 1
+    },
+    {
+      "key": 50,
+      "label": "D+G",
+      "sample": "Inputs/huntin_wabbits/Synth/DG.wav",
+      "track": 1
+    },
+    {
+      "key": 52,
+      "label": "E",
+      "sample": "Inputs/huntin_wabbits/Synth/E.wav",
+      "track": 1
+    }
+  ],
+  "source": "Inputs/huntin_wabbits/midi/Synth_MIDI_Loop.mid",
+  "start_beat": 0,
+  "unboxed_notes": "play"
+}

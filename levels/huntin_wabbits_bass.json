@@ -1,0 +1,160 @@
+{
+  "bars": 2,
+  "bpm": 114,
+  "buttons": [
+    {
+      "end": 110,
+      "key_high": 57,
+      "key_low": 57,
+      "pad": 1,
+      "start": 64,
+      "track": 1
+    },
+    {
+      "end": 195,
+      "key_high": 57,
+      "key_low": 57,
+      "pad": 1,
+      "start": 145,
+      "track": 1
+    },
+    {
+      "end": 264,
+      "key_high": 57,
+      "key_low": 57,
+      "pad": 1,
+      "start": 216,
+      "track": 1
+    },
+    {
+      "end": 328,
+      "key_high": 57,
+      "key_low": 57,
+      "pad": 1,
+      "start": 288,
+      "track": 1
+    },
+    {
+      "end": 392,
+      "key_high": 62,
+      "key_low": 62,
+      "pad": 3,
+      "start": 352,
+      "track": 1
+    },
+    {
+      "end": 496,
+      "key_high": 57,
+      "key_low": 57,
+      "pad": 1,
+      "start": 448,
+      "track": 1
+    },
+    {
+      "end": 579,
+      "key_high": 57,
+      "key_low": 57,
+      "pad": 1,
+      "start": 528,
+      "track": 1
+    },
+    {
+      "end": 652,
+      "key_high": 57,
+      "key_low": 57,
+      "pad": 1,
+      "start": 600,
+      "track": 1
+    },
+    {
+      "end": 717,
+      "key_high": 57,
+      "key_low": 57,
+      "pad": 1,
+      "start": 672,
+      "track": 1
+    },
+    {
+      "end": 775,
+      "key_high": 53,
+      "key_low": 53,
+      "pad": 2,
+      "start": 736,
+      "track": 1
+    }
+  ],
+  "exclusive": true,
+  "format": 2,
+  "metronome": "always",
+  "midi": "levels/huntin_wabbits_bass.mid",
+  "name": "Bass",
+  "pads": [
+    {
+      "color": [
+        0.2,
+        0.55,
+        1
+      ]
+    },
+    {
+      "color": [
+        0.25,
+        0.95,
+        0.45
+      ]
+    },
+    {
+      "color": [
+        1,
+        0.55,
+        0.12
+      ]
+    },
+    {
+      "color": [
+        0.95,
+        0.25,
+        0.8
+      ]
+    }
+  ],
+  "rounds": [
+    {
+      "end": 328,
+      "key_high": 57,
+      "key_low": 57,
+      "start": 64,
+      "track": 1
+    },
+    {
+      "end": 717,
+      "key_high": 57,
+      "key_low": 57,
+      "start": 448,
+      "track": 1
+    }
+  ],
+  "sounds": [
+    {
+      "key": 53,
+      "label": "Bass F",
+      "sample": "Inputs/huntin_wabbits/Bass/Bass_F.wav",
+      "track": 1
+    },
+    {
+      "key": 57,
+      "label": "Bass A",
+      "sample": "Inputs/huntin_wabbits/Bass/Bass_A.wav",
+      "track": 1
+    },
+    {
+      "key": 62,
+      "label": "Bass D",
+      "sample": "Inputs/huntin_wabbits/Bass/Bass_D.wav",
+      "track": 1
+    }
+  ],
+  "source": "Inputs/huntin_wabbits/midi/Bass_MIDI_Loop.mid",
+  "start_beat": 0,
+  "unboxed_notes": "play"
+}

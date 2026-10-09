@@ -1,0 +1,210 @@
+{
+  "audio": {
+    "backing_volume": 0.75,
+    "click_volume": 0.5,
+    "master_volume": 1,
+    "metronome": "count_ins",
+    "sample_volume": 1,
+    "velocity_sensitivity": 0.35
+  },
+  "debug": {
+    "autoplay": false,
+    "show_timing": false
+  },
+  "display": {
+    "fullscreen": false,
+    "virtual_height": 800,
+    "virtual_width": 1280,
+    "window_height": 800,
+    "window_width": 1280
+  },
+  "feel": {
+    "hit_punch": 0,
+    "punch_s": 0.14,
+    "shake_px": 10,
+    "shake_s": 0.25,
+    "status_pop": 0.25,
+    "status_pop_s": 0.2
+  },
+  "flow": {
+    "bars_per_round": 1,
+    "buttons_per_round": 1,
+    "count_in_beats": 4,
+    "demo_repeats": 1,
+    "demo_sound": true,
+    "gap_beats": 4,
+    "grow": "buttons",
+    "result_beats": 2,
+    "show_count": true,
+    "start_bars": 1,
+    "start_buttons": 1,
+    "title_s": 1.6
+  },
+  "hot_reload": {
+    "enabled": true,
+    "poll_interval_s": 0.4
+  },
+  "layout": {
+    "accent_color": [
+      1,
+      0.78,
+      0.25
+    ],
+    "background": [
+      0.055,
+      0.058,
+      0.066
+    ],
+    "bad_color": [
+      1,
+      0.36,
+      0.3
+    ],
+    "board_size": 452,
+    "board_x": 640,
+    "board_y": 484,
+    "dim_color": [
+      0.45,
+      0.47,
+      0.52
+    ],
+    "frame": true,
+    "frame_color": [
+      0.105,
+      0.108,
+      0.118
+    ],
+    "frame_corner": 30,
+    "frame_padding": 30,
+    "good_color": [
+      0.45,
+      1,
+      0.6
+    ],
+    "hint_y": 752,
+    "hud_margin": 40,
+    "key_label_color": [
+      0.25,
+      0.255,
+      0.27
+    ],
+    "pad_gap": 22,
+    "show_hint": true,
+    "show_key_labels": true,
+    "status_y": 84,
+    "text_color": [
+      0.92,
+      0.93,
+      0.95
+    ],
+    "title_y": 36
+  },
+  "lights": {
+    "attack_s": 0.01,
+    "breathe": true,
+    "breathe_speed": 0.5,
+    "brightness": 1,
+    "correct_white": 0,
+    "decay_s": 0.3,
+    "demo_level": 1,
+    "edge_bleed": 0.7,
+    "glow_size": 64,
+    "glow_strength": 0.9,
+    "hold_s": 0.1,
+    "idle_level": 0.06,
+    "miss_color": [
+      0.6,
+      0.08,
+      0.06
+    ],
+    "miss_s": 0.5,
+    "press_level": 0,
+    "velocity_brightness": 0.4,
+    "wrong_color": [
+      1,
+      0.12,
+      0.08
+    ],
+    "wrong_s": 0.4
+  },
+  "pads": {
+    "color": [
+      0.37,
+      0.38,
+      0.4
+    ],
+    "corner": 16,
+    "highlight": 0.1,
+    "press_darken": 0.22,
+    "press_in_s": 0.025,
+    "press_out_s": 0.12,
+    "press_scale": 0.94,
+    "rim_color": [
+      0.2,
+      0.205,
+      0.215
+    ],
+    "rim_width": 4,
+    "translucency": 0.55
+  },
+  "rules": {
+    "extra_press_is_mistake": true,
+    "lives": 3,
+    "mistakes_allowed": 1,
+    "on_fail": "continue"
+  },
+  "schema_version": 1,
+  "scoring": {
+    "combo_max": 4,
+    "combo_step": 8,
+    "good": 50,
+    "level_bonus": 1000,
+    "perfect": 100,
+    "round_bonus": 250
+  },
+  "song": {
+    "clear_beats": 8,
+    "clear_color": [
+      1,
+      0.72,
+      0.12
+    ],
+    "clear_flashes_per_beat": 4,
+    "clear_glow": 0.5,
+    "clear_level": 1.7,
+    "clear_punch": 0.06,
+    "clear_white": 0.35,
+    "finale_level": 1.5,
+    "finale_react": 0.6,
+    "finale_steps_per_beat": 4,
+    "finale_volume": 1,
+    "finale_white": 0.5,
+    "locked_volume": 0.6,
+    "tint": 0.9,
+    "vo_beat": 1,
+    "vo_volume": 1
+  },
+  "timing": {
+    "audio_offset_ms": 0,
+    "good_ms": 220,
+    "perfect_ms": 45,
+    "snap_early": false
+  },
+  "type": {
+    "font": "bungee",
+    "hint_size": 20,
+    "hud_size": 30,
+    "label_font": "sharetech",
+    "label_size": 26,
+    "status_size": 58,
+    "title_size": 28
+  },
+  "wrong_sound": {
+    "drive": 3,
+    "enabled": true,
+    "lowpass_hz": 650,
+    "pitch_semitones": -3,
+    "resonance": 5,
+    "volume_db": -4
+  }
+}

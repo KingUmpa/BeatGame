@@ -1,0 +1,192 @@
+{
+  "backing": {
+    "file": "Inputs/test_a/samples/Background Tracks/Huntin_ Wabbitz (Flip)_Instrumental_Clip_No_Samples_Loop.wav",
+    "gain": 1
+  },
+  "bars": 2,
+  "bpm": 114,
+  "buttons": [
+    {
+      "end": 1583,
+      "key_high": 69,
+      "key_low": 69,
+      "pad": 1,
+      "start": 1561,
+      "track": 1
+    },
+    {
+      "end": 1626,
+      "key_high": 71,
+      "key_low": 71,
+      "pad": 2,
+      "start": 1610,
+      "track": 1
+    },
+    {
+      "end": 1682,
+      "key_high": 71,
+      "key_low": 71,
+      "pad": 2,
+      "start": 1656,
+      "track": 1
+    },
+    {
+      "end": 1730,
+      "key_high": 69,
+      "key_low": 69,
+      "pad": 1,
+      "start": 1704,
+      "track": 1
+    },
+    {
+      "end": 1775,
+      "key_high": 71,
+      "key_low": 71,
+      "pad": 2,
+      "start": 1753,
+      "track": 1
+    },
+    {
+      "end": 1825,
+      "key_high": 69,
+      "key_low": 69,
+      "pad": 1,
+      "start": 1800,
+      "track": 1
+    },
+    {
+      "end": 1872,
+      "key_high": 76,
+      "key_low": 76,
+      "pad": 3,
+      "start": 1849,
+      "track": 1
+    },
+    {
+      "end": 1919,
+      "key_high": 74,
+      "key_low": 74,
+      "pad": 4,
+      "start": 1896,
+      "track": 1
+    },
+    {
+      "end": 1971,
+      "key_high": 69,
+      "key_low": 69,
+      "pad": 1,
+      "start": 1948,
+      "track": 1
+    },
+    {
+      "end": 2015,
+      "key_high": 71,
+      "key_low": 71,
+      "pad": 2,
+      "start": 1997,
+      "track": 1
+    },
+    {
+      "end": 2069,
+      "key_high": 71,
+      "key_low": 71,
+      "pad": 2,
+      "start": 2045,
+      "track": 1
+    },
+    {
+      "end": 2113,
+      "key_high": 69,
+      "key_low": 69,
+      "pad": 1,
+      "start": 2092,
+      "track": 1
+    },
+    {
+      "end": 2163,
+      "key_high": 71,
+      "key_low": 71,
+      "pad": 2,
+      "start": 2140,
+      "track": 1
+    },
+    {
+      "end": 2206,
+      "key_high": 69,
+      "key_low": 69,
+      "pad": 1,
+      "start": 2186,
+      "track": 1
+    },
+    {
+      "end": 2253,
+      "key_high": 76,
+      "key_low": 76,
+      "pad": 3,
+      "start": 2231,
+      "track": 1
+    }
+  ],
+  "format": 2,
+  "midi": "levels/02_all_i_do.mid",
+  "name": "All I Do",
+  "pads": [
+    {
+      "color": [
+        0.2,
+        0.55,
+        1
+      ]
+    },
+    {
+      "color": [
+        0.25,
+        0.95,
+        0.45
+      ]
+    },
+    {
+      "color": [
+        1,
+        0.55,
+        0.12
+      ]
+    },
+    {
+      "color": [
+        0.95,
+        0.25,
+        0.8
+      ]
+    }
+  ],
+  "sounds": [
+    {
+      "key": 69,
+      "label": "Slice 22",
+      "sample": "Inputs/test_a/samples/Samples/Bounce 14-Audio [2026-09-28 194840]-1.wav",
+      "track": 1
+    },
+    {
+      "key": 71,
+      "label": "Slice 36",
+      "sample": "Inputs/test_a/samples/Samples/Bounce 14-Audio [2026-09-28 194847]-2.wav",
+      "track": 1
+    },
+    {
+      "key": 74,
+      "label": "Slice 39",
+      "sample": "Inputs/test_a/samples/Samples/Bounce 14-Audio [2026-09-28 194856]-4.wav",
+      "track": 1
+    },
+    {
+      "key": 76,
+      "label": "Slice 17",
+      "sample": "Inputs/test_a/samples/Samples/Bounce 14-Audio [2026-09-28 194853]-3.wav",
+      "track": 1
+    }
+  ],
+  "source": "Inputs/test_a/midi/Sample_MIDI_Loop.mid",
+  "start_beat": 16,
+  "unboxed_notes": "play"
+}
