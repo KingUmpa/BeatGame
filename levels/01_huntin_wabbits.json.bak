@@ -1,6 +1,6 @@
 {
   "backing": {
-    "file": "Inputs/test_a/samples/Background Tracks/Huntin_ Wabbitz (Flip)_Instrumental_Clip_No_Samples_Loop.wav",
+    "file": "assets/audio/songs/huntin_wabbits/instrumental_loop.wav",
     "gain": 1
   },
   "bars": 1,
@@ -164,29 +164,29 @@
     {
       "key": 69,
       "label": "Slice 22",
-      "sample": "Inputs/test_a/samples/Samples/Bounce 14-Audio [2026-09-28 194840]-1.wav",
+      "sample": "assets/audio/samples/vocal_chops/chop_1.wav",
       "track": 1
     },
     {
       "key": 71,
       "label": "Slice 36",
-      "sample": "Inputs/test_a/samples/Samples/Bounce 14-Audio [2026-09-28 194847]-2.wav",
+      "sample": "assets/audio/samples/vocal_chops/chop_2.wav",
       "track": 1
     },
     {
       "key": 74,
       "label": "Slice 39",
-      "sample": "Inputs/test_a/samples/Samples/Bounce 14-Audio [2026-09-28 194856]-4.wav",
+      "sample": "assets/audio/samples/vocal_chops/chop_4.wav",
       "track": 1
     },
     {
       "key": 76,
       "label": "Slice 17",
-      "sample": "Inputs/test_a/samples/Samples/Bounce 14-Audio [2026-09-28 194853]-3.wav",
+      "sample": "assets/audio/samples/vocal_chops/chop_3.wav",
       "track": 1
     }
   ],
-  "source": "Inputs/test_a/midi/Sample_MIDI_Loop.mid",
+  "source": "assets/midi/vocal_chops_loop.mid",
   "start_beat": 16,
   "unboxed_notes": "play"
 }

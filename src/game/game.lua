@@ -307,6 +307,12 @@ function Game:lockedGain(beat)
   return self.J.song.locked_volume * (part and part.underGain or 1)
 end
 
+-- where the music's beat falls on the timeline: the level's beat_offset after each whole beat
+-- (the clicks, the turn's flashes and the gold strobe keep to it)
+function Game:beatOffset()
+  return self.level.beat_offset or 0
+end
+
 -- mixer.onBlock: clicks, the demo's notes, the notes no button plays during the turn, and
 -- the loops locked in under this level
 function Game:schedule(f0, f1)
@@ -314,14 +320,15 @@ function Game:schedule(f0, f1)
   local b0, b1 = f0 / self.fpb, f1 / self.fpb
   local mode = self.level.metronome or J.audio.metronome
   local quietFrom = self.celebrate and self.celebrate.from or math.huge
+  local off = self:beatOffset()
   for _, r in ipairs(self.rounds) do
     if r.finish > b0 and r.start < b1 then
       if mode ~= "off" then
-        for beat = math.ceil(b0), math.min(math.ceil(b1), quietFrom) - 1 do
+        for k = math.ceil(b0 - off), math.ceil(math.min(b1, quietFrom) - off) - 1 do
+          local beat = k + off
           local phase = r:phaseAt(beat)
           if phase and (mode == "always" or phase == "count") then
-            local accent = beat % 4 == 0
-            mx:play(accent and self.clicks.accent or self.clicks.click, round(beat * self.fpb), J.audio.click_volume)
+            mx:play(k % 4 == 0 and self.clicks.accent or self.clicks.click, round(beat * self.fpb), J.audio.click_volume)
           end
         end
       end
@@ -700,12 +707,13 @@ end
 
 -- the gold strobe after a level is cleared: a flash every 1/song.clear_flashes_per_beat of a
 -- beat chasing round the board, all four at once (and whiter) on the beat. It comes on the
--- moment the turn ends, which can be between beats, so it keeps to the timeline's beats.
+-- moment the turn ends, which can be between beats, so it keeps to the music's beats.
 function Game:celebrationLights(out, beat)
   local c = self.celebrate
   if not c or beat < c.from or beat >= c.to then return false end
   local S = self.J.song
   local per = S.clear_flashes_per_beat
+  beat = beat - self:beatOffset()
   local step = math.floor(beat * per)
   local env = (1 - (beat * per - step)) ^ 2
   local onBeat = step % per == 0
@@ -801,13 +809,16 @@ function Game:lightState()
           end
         end
       end
-      -- your turn: all four flash green on its first beat, then pulse dimly on every beat
-      -- until it's over (each a tap, like a button's light)
+      -- your turn: all four flash green on its first beat (the first click from where the
+      -- demo ends), then pulse dimly on every beat until it's over (each a tap, like a
+      -- button's light)
       local r = self.round
       local play = r and not r.resolved and r.byName.play
-      if play and beat >= play.from then
-        local n = math.floor(beat - play.from)
-        local env = Lights.envelope(t - (play.from + n) * self.spb, Li.attack_s, Lights.hold(J), Li.decay_s)
+      local off = self:beatOffset()
+      local first = play and math.ceil(play.from - off - 1e-9) + off
+      if first and beat >= first then
+        local n = math.floor(beat - first)
+        local env = Lights.envelope(t - (first + n) * self.spb, Li.attack_s, Lights.hold(J), Li.decay_s)
         local lvl = env * (n == 0 and Li.turn_level or Li.turn_pulse_level)
         for i = 1, 4 do offer(i, Li.turn_color, lvl) end
       end
@@ -970,6 +981,8 @@ Game.SCENARIOS = {
   { id = "fail", name = "Round fail" },
   { id = "game_over", name = "Game over" },
   { id = "finale", name = "Finale" },
+  -- the song's last round, played by the bot, straight through the gold into the finale and out
+  { id = "final_round", name = "Play final round", through = true },
 }
 
 function Game:scenario(id)
@@ -998,6 +1011,17 @@ function Game:scenario(id)
     self.finaleVoice = self.mixer:play(f.sample, 0, self.J.song.finale_volume * f.gain)
     self.state = "finale"
     self.finale = { from = 0, to = f.beats }
+    return
+  end
+  if id == "final_round" then
+    if not (self.song and self.song.finale and self.song.finale.sample) then return self:toTitle() end
+    -- the earlier levels are built and looping; the last level is on its last round, bot at the pads
+    local last = #self.levels
+    for i = 1, last - 1 do self.locked[#self.locked + 1] = { part = self.song.parts[i], from = 0 } end
+    self:loadLevel(last)
+    self:beginTimeline(Round.count(self.prep, self.J))
+    self.autoplayRound, self.autoplayMode, self.botNext, self.botRound = self.round, "perfect", 1, self.round
+    self.botSlipped = nil
     return
   end
   if id == "level_clear" then

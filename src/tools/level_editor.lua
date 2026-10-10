@@ -62,7 +62,7 @@ local function scan(dir, ext, out, maxSize)
 end
 
 function E:refreshFiles()
-  self.files = { levels = {}, songs = {}, midis = scan("Inputs", "mid", {}) }
+  self.files = { levels = {}, songs = {}, midis = scan("assets/midi", "mid", {}) }
   for _, p in ipairs(Level.list()) do
     local ok, lv = pcall(Level.load, p)
     self.files.levels[#self.files.levels + 1] = { path = p, name = ok and lv.name or "(can't read)", buttons = ok and #lv.buttons or 0, err = not ok and lv or nil }
@@ -74,12 +74,9 @@ function E:refreshFiles()
     self.files.songs[#self.files.songs + 1] = { path = p, name = ok and song.name or "(can't read)", levels = table.concat(names, " > "), err = not ok and song or nil }
   end
   table.sort(self.files.midis)
-  self.samplePool = scan("Inputs", "wav", {}, 4e6)
+  self.samplePool = scan("assets/audio/samples", "wav", {})
   self.backingPool = {}
-  for _, p in ipairs(scan("Inputs", "wav", {})) do
-    local info = love.filesystem.getInfo(p)
-    if info and info.size >= 4e6 then self.backingPool[#self.backingPool + 1] = p end
-  end
+  scan("assets/audio/songs", "wav", self.backingPool)
   self.voPool = Song.voLines()
 end
 
@@ -590,7 +587,7 @@ end
 
 function E:cycleSound(row)
   local pool = self.samplePool
-  if #pool == 0 then return self:say("no short .wav files under Inputs/") end
+  if #pool == 0 then return self:say("no .wav files under assets/audio/samples/") end
   local cur = Level.sound(self.lv, row.track, row.key)
   local i = 0
   for k, p in ipairs(pool) do if cur and p == cur.sample then i = k end end
@@ -649,7 +646,7 @@ function E:cycleVo(i)
   if s then self.mixer:play(s, nil, self.J.song.vo_volume) end
 end
 
--- in a song: the full track played after the last level (the long .wavs under Inputs/)
+-- in a song: the full track played after the last level (the .wavs under assets/audio/songs/)
 function E:cycleFinale()
   local pool = self.backingPool
   local cur = self.song.finale and self.song.finale.file
@@ -740,8 +737,10 @@ function E:schedule(f0, f1)
     end
   end
   if self.metronome then
-    for beat = math.ceil(b0), math.ceil(b1) - 1 do
-      self.mixer:play(beat % 4 == 0 and self.clicks.accent or self.clicks.click, round(beat * fpb), A.click_volume)
+    -- on the music's beat, as in the game (the level's beat_offset)
+    local off = self.lv.beat_offset or 0
+    for k = math.ceil(b0 - off), math.ceil(b1 - off) - 1 do
+      self.mixer:play(k % 4 == 0 and self.clicks.accent or self.clicks.click, round((k + off) * fpb), A.click_volume)
     end
   end
 end

@@ -12,13 +12,16 @@
 --   {
 --     "format": 2, "name": "All I Do",
 --     "midi": "levels/02_all_i_do.mid",          the MIDI this level plays (kept next to it)
---     "source": "Inputs/.../Sample_MIDI_Loop.mid", where that MIDI first came from
+--     "source": "assets/midi/vocal_chops_loop.mid", where that MIDI first came from
 --     "bpm": 114, "start_beat": 16, "bars": 2,   the stretch of the MIDI the level uses
 --     "backing": { "file": "...wav", "gain": 1 },
 --     "unboxed_notes": "play" | "mute",
 --     "exclusive": true,                          every note cuts every sound still ringing
 --     "metronome": "always" | "count_ins" | "off", clicks under this level (absent: juice's
 --                                                 audio.metronome)
+--     "beat_offset": 0.25,                        where the music's beat really falls, in beats
+--                                                 after the MIDI's (0.25: a 16th later); the
+--                                                 clicks and the lights on the beat follow it
 --     "pads": [ { "color": [r,g,b] } x4 ],        1 = Q, 2 = W, 3 = A, 4 = S
 --     "sounds": [ { "track": 1, "key": 69, "sample": "...wav", "label": "Slice 22" } ],
 --     "buttons": [ { "track": 1, "pad": 1, "start": 1561, "end": 1588,
@@ -111,6 +114,7 @@ function Level.normalize(raw, midiBytes)
     unboxed_notes = raw.unboxed_notes == "mute" and "mute" or "play",
     exclusive = raw.exclusive == true,
     metronome = util.contains(Level.METRONOMES, raw.metronome) and raw.metronome or nil,
+    beat_offset = tonumber(raw.beat_offset) or 0,
     pads = {}, sounds = {}, buttons = {}, rounds = {},
   }
   if type(raw.backing) == "table" and type(raw.backing.file) == "string" then
@@ -206,6 +210,7 @@ function Level.toJson(lv)
     format = 2, name = lv.name, midi = lv.midi, source = lv.source, bpm = lv.bpm,
     start_beat = lv.start_beat, bars = lv.bars, unboxed_notes = lv.unboxed_notes,
     exclusive = lv.exclusive or nil, metronome = lv.metronome,
+    beat_offset = (lv.beat_offset or 0) ~= 0 and lv.beat_offset or nil,
     pads = {}, sounds = {}, buttons = {},
   }
   if lv.backing then out.backing = { file = lv.backing.file, gain = lv.backing.gain } end

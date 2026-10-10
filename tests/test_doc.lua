@@ -4,7 +4,7 @@ local Midi = require("src.midi")
 local Doc = require("src.doc")
 local util = require("src.util")
 
-local PATH = "Inputs/test_a/midi/Sample_MIDI_Loop.mid"
+local PATH = "assets/midi/vocal_chops_loop.mid"
 
 local function load()
   local bytes = util.readFile(PATH)

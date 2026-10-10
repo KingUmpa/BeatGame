@@ -34,6 +34,9 @@ function tests.huntin_wabbits_builds_bass_then_synth_then_chops(T)
   T.eq(table.concat(names, " / "), "Bass / Synth / Vocal Chops")
   T.eq(song.parts[1].level.metronome, "always", "the bass is built over the metronome")
   T.eq(song.parts[2].level.metronome, "off", "then the bass is the time")
+  for _, p in ipairs(song.parts) do
+    T.eq(p.level.beat_offset, 0.25, p.level.name .. ": the record's backbeat is a 16th after the MIDI's beat")
+  end
   local J = Juice.defaults()
   for i, p in ipairs(song.parts) do
     local prep = Level.prepare(p.level)
@@ -85,6 +88,13 @@ function tests.the_finale_is_analysed_into_low_and_high_loudness(T)
   T.ok(a.low[10] > 0.5 and a.low[11] < a.low[10] * 0.5, ("low end on the thumps: %.2f vs %.2f"):format(a.low[10], a.low[11]))
   T.ok(a.high[11] > 0.5 and a.high[10] < a.high[11] * 0.5, ("highs on the hiss: %.2f vs %.2f"):format(a.high[11], a.high[10]))
   for i = 0, a.steps - 1 do T.ok(a.low[i] <= 1 and a.high[i] <= 1) end
+end
+
+-- the finale is the cropped track: it starts at the breath-in, and its first bar line is beat 2
+function tests.the_finale_starts_at_the_breath_in(T)
+  local song = Song.load("songs/huntin_wabbits.json")
+  T.ok(song.finale.file:match("full_cropped%.wav$") ~= nil, "the cropped track, not the 20-second build-up")
+  T.eq(song.finale.beat, 3, "bars start at the 4th beat of the cropped track")
 end
 
 return tests

@@ -1,5 +1,6 @@
 {
   "bars": 2,
+  "beat_offset": 0.25,
   "bpm": 114,
   "buttons": [
     {
@@ -98,47 +99,47 @@
     {
       "key": 41,
       "label": "F",
-      "sample": "Inputs/huntin_wabbits/Synth/F.wav",
+      "sample": "assets/audio/samples/synth/F.wav",
       "track": 1
     },
     {
       "key": 43,
       "label": "D+G",
-      "sample": "Inputs/huntin_wabbits/Synth/DG.wav",
+      "sample": "assets/audio/samples/synth/DG.wav",
       "track": 1
     },
     {
       "key": 45,
       "label": "A",
-      "sample": "Inputs/huntin_wabbits/Synth/A.wav",
+      "sample": "assets/audio/samples/synth/A.wav",
       "track": 1
     },
     {
       "key": 47,
       "label": "B",
-      "sample": "Inputs/huntin_wabbits/Synth/B.wav",
+      "sample": "assets/audio/samples/synth/B.wav",
       "track": 1
     },
     {
       "key": 48,
       "label": "C",
-      "sample": "Inputs/huntin_wabbits/Synth/C.wav",
+      "sample": "assets/audio/samples/synth/C.wav",
       "track": 1
     },
     {
       "key": 50,
       "label": "D+G",
-      "sample": "Inputs/huntin_wabbits/Synth/DG.wav",
+      "sample": "assets/audio/samples/synth/DG.wav",
       "track": 1
     },
     {
       "key": 52,
       "label": "E",
-      "sample": "Inputs/huntin_wabbits/Synth/E.wav",
+      "sample": "assets/audio/samples/synth/E.wav",
       "track": 1
     }
   ],
-  "source": "Inputs/huntin_wabbits/midi/Synth_MIDI_Loop.mid",
+  "source": "assets/midi/synth_loop.mid",
   "start_beat": 0,
   "unboxed_notes": "play"
 }

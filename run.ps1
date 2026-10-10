@@ -5,15 +5,15 @@
 #   .\run.ps1 levels          the level editor
 #   .\run.ps1 export          the song to exports\ (with and without backing)
 #   .\run.ps1 test            unit tests
-#   .\run.ps1 package -Version 0.1   Windows + Mac builds in dist\ (tools\package.ps1)
+#   .\run.ps1 package -Version 0.1   Windows + Mac builds in dist\ (dist\package.ps1)
 #
 # Looks for LÖVE in PATH, $env:LOVE_HOME, the default install folders, CounterCatch's
-# tools\cache, then this repo's tools\cache; downloads LÖVE 11.5 there if none is found.
+# dist\cache, then this repo's dist\cache; downloads LÖVE 11.5 there if none is found.
 
 param([string]$Mode = "play", [Parameter(ValueFromRemainingArguments = $true)][string[]]$Extra = @())
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$cached = Join-Path $root "tools\cache\love-11.5-win64\lovec.exe"
+$cached = Join-Path $root "dist\cache\love-11.5-win64\lovec.exe"
 
 $candidates = @(@(
   (Get-Command lovec.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source),
@@ -25,12 +25,12 @@ $candidates = @(@(
 ) | Where-Object { $_ -and (Test-Path $_) })
 
 if (-not $candidates) {
-  $zip = Join-Path $root "tools\cache\love-11.5-win64.zip"
+  $zip = Join-Path $root "dist\cache\love-11.5-win64.zip"
   New-Item -ItemType Directory -Force -Path (Split-Path $zip) | Out-Null
-  Write-Host "LÖVE not found; downloading 11.5 into tools\cache ..."
+  Write-Host "LÖVE not found; downloading 11.5 into dist\cache ..."
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
   Invoke-WebRequest -Uri "https://github.com/love2d/love/releases/download/11.5/love-11.5-win64.zip" -OutFile $zip
-  Expand-Archive -Path $zip -DestinationPath (Join-Path $root "tools\cache") -Force
+  Expand-Archive -Path $zip -DestinationPath (Join-Path $root "dist\cache") -Force
   Remove-Item $zip
   if (-not (Test-Path $cached)) { Write-Error "download failed; install LÖVE 11.5 from https://love2d.org"; exit 1 }
   $candidates = @($cached)
@@ -45,7 +45,7 @@ try {
     "levels" { & $love $root --levels @Extra }
     "export" { & $love $root --export @Extra }
     # its own process, so "-Version 0.1" etc. reach it as named parameters
-    "package" { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "tools\package.ps1") @Extra }
+    "package" { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "dist\package.ps1") @Extra }
     default  { & $love $root @Extra }
   }
 } finally { Pop-Location }

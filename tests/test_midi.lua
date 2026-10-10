@@ -78,7 +78,7 @@ function tests.note_names_use_ableton_octaves(T)
 end
 
 function tests.reads_the_test_a_clip_export(T)
-  local m = Midi.load("Inputs/test_a/midi/Sample_MIDI_Loop.mid")
+  local m = Midi.load("assets/midi/vocal_chops_loop.mid")
   T.eq(m.format, 0); T.eq(m.ppq, 96)
   T.eq(m.name, "All I Do Is Think About You")
   T.eq(m.hasTempo, false, "Ableton clip exports carry no tempo")

@@ -5,7 +5,7 @@ local Midi = require("src.midi")
 local json = require("lib.json")
 local util = require("src.util")
 
-local MIDI = "Inputs/test_a/midi/Sample_MIDI_Loop.mid"
+local MIDI = "assets/midi/vocal_chops_loop.mid"
 
 local function pads(prep)
   local out = {}
@@ -22,7 +22,7 @@ local function built(bars, grouped)
   local lv = Level.fromMidi(MIDI)
   lv.bpm, lv.start_beat, lv.bars = 114, 16, bars
   for key, n in pairs({ [69] = 1, [71] = 2, [76] = 3, [74] = 4 }) do
-    Level.setSound(lv, 1, key, ("Inputs/test_a/samples/Samples/bounce-%d.wav"):format(n))
+    Level.setSound(lv, 1, key, ("assets/audio/samples/vocal_chops/chop_%d.wav"):format(n))
   end
   local a, z = Level.window(lv)
   local inWin = {}
@@ -149,7 +149,7 @@ function tests.sidecar_round_trip(T)
   T.eq(back.pads[2].color[2], 0.2)
   T.eq(back.unboxed_notes, "mute")
   T.eq(#back.sounds, 4)
-  T.eq(Level.sound(back, 1, 71).sample:match("%-2%.wav$") ~= nil, true)
+  T.eq(Level.sound(back, 1, 71).sample:match("_2%.wav$") ~= nil, true)
   T.eq(back.source, MIDI)
 end
 
@@ -179,6 +179,14 @@ function tests.a_levels_metronome_round_trips(T)
   lv.metronome = "always"
   T.eq(Level.normalize(json.decode(Level.toJson(lv)), lv.midiBytes).metronome, "always")
   T.eq(Level.normalize({ metronome = "loud" }).metronome, nil, "unknown values are dropped")
+end
+
+function tests.a_levels_beat_offset_round_trips(T)
+  local lv = built(1)
+  T.eq(lv.beat_offset, 0, "absent: on the MIDI's beat")
+  T.eq(Level.toJson(lv):find("beat_offset", 1, true), nil, "0: not written")
+  lv.beat_offset = 0.25
+  T.eq(Level.normalize(json.decode(Level.toJson(lv)), lv.midiBytes).beat_offset, 0.25)
 end
 
 -- what plays once a level is locked in under the next: every note it sounds, in order

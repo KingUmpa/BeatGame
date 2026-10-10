@@ -1,8 +1,8 @@
 {
   "bpm": 114,
   "finale": {
-    "beat": 0,
-    "file": "Inputs/test_a/samples/Background Tracks/Huntin_ Wabbitz (Flip).wav",
+    "beat": 3,
+    "file": "assets/audio/songs/huntin_wabbits/full_cropped.wav",
     "gain": 1
   },
   "format": 1,

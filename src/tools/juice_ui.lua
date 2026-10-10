@@ -336,10 +336,14 @@ function UI:runScenario(sc)
   self.watch = { state = self.game.state, round = self.game.round }
 end
 
--- replay the scenario once the game has moved past it
+-- replay the scenario once the game has moved past it (a "through" scenario, once it is over)
 function UI:checkScenario(dt)
   local g, sc = self.game, self.scenario
   if not sc or sc.id == "title" then return end
+  if sc.through and not self.restartIn then
+    if g.state == "complete" or g.state == "game_over" or g.state == "title" then self.restartIn = 1.5 end
+    return
+  end
   if self.restartIn then
     self.restartIn = self.restartIn - dt
     if self.restartIn <= 0 then self:runScenario(sc) end

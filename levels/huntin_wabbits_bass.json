@@ -1,5 +1,6 @@
 {
   "bars": 2,
+  "beat_offset": 0.25,
   "bpm": 114,
   "buttons": [
     {
@@ -138,23 +139,23 @@
     {
       "key": 53,
       "label": "Bass F",
-      "sample": "Inputs/huntin_wabbits/Bass/Bass_F.wav",
+      "sample": "assets/audio/samples/bass/Bass_F.wav",
       "track": 1
     },
     {
       "key": 57,
       "label": "Bass A",
-      "sample": "Inputs/huntin_wabbits/Bass/Bass_A.wav",
+      "sample": "assets/audio/samples/bass/Bass_A.wav",
       "track": 1
     },
     {
       "key": 62,
       "label": "Bass D",
-      "sample": "Inputs/huntin_wabbits/Bass/Bass_D.wav",
+      "sample": "assets/audio/samples/bass/Bass_D.wav",
       "track": 1
     }
   ],
-  "source": "Inputs/huntin_wabbits/midi/Bass_MIDI_Loop.mid",
+  "source": "assets/midi/bass_loop.mid",
   "start_beat": 0,
   "unboxed_notes": "play"
 }
