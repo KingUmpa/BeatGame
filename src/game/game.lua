@@ -12,8 +12,12 @@
 -- its VO line plays) and it keeps playing under the next level; after the last, the song's
 -- full track plays with the pads going off in time with it.
 --
--- States: title -> intro (level name) -> play (rounds; in a song, level after level) ->
--- finale (a song's full track) -> complete, or game_over.
+-- States: title -> (lead_in: the spoken how-to, opts.device) -> intro (level
+-- name) -> play (rounds; in a song, level after level) -> finale (a song's full track) ->
+-- complete, or game_over.
+--
+-- The voice (src/game/vo.lua) says what the screen says, for the device this is a model of,
+-- which has pads and no screen.
 --
 -- Everything that feels like anything comes from juice.json (J), read at the moment it is
 -- used, so the juice editor's sliders and hot reload act immediately.
@@ -30,6 +34,7 @@ local Level = require("src.game.level")
 local Song = require("src.game.song")
 local Round = require("src.game.round")
 local Lights = require("src.game.lights")
+local Vo = require("src.game.vo")
 local Screen = require("src.render.screen")
 local Pads = require("src.render.pads")
 local Fonts = require("src.render.fonts")
@@ -40,6 +45,9 @@ Game.__index = Game
 local RATE = 44100
 local KEYS = { q = 1, w = 2, a = 3, s = 4 }
 local CHASE = { 1, 2, 4, 3 }   -- clockwise round the board: Q W S A
+local WAITING_BEATS = 8        -- into a turn nobody has started: "Go ahead."
+local NUDGE_S = { 20, 60 }     -- on the title with nothing pressed: "Still there?"
+local REST_S = 1               -- a pad starts the game only this long after the last one ended
 
 local function round(x) return math.floor(x + 0.5) end
 local function db(x) return 10 ^ (x / 20) end
@@ -48,12 +56,18 @@ local function db(x) return 10 ^ (x / 20) end
 local function startLives(J) return J.rules.lives > 0 and J.rules.lives or math.huge end
 
 -- opts: level (one level file), song (one song file), from (start a song at this level, the
--- ones before it already built), autoplay (the bot plays every turn)
+-- ones before it already built), autoplay (the bot plays every turn), device (play like the
+-- device: any pad starts the game, and the spoken lead-in comes before the music)
 function Game.new(opts)
   local g = setmetatable({ opts = opts or {} }, Game)
   g.J = Juice.data
   local J = g.J
-  g.mixer = Mixer.new{ rate = RATE, bufferFrames = 256, bufferCount = 4 }
+  -- the audio queue: 4 buffers (23 ms) keeps hits tight on Windows, but on a Mac the queue ran
+  -- dry several times a second (heard as static, worst on the voice); 8 (46 ms) never does
+  local mac = love.system and love.system.getOS() == "OS X"
+  g.mixer = Mixer.new{ rate = RATE, bufferFrames = 256, bufferCount = mac and 8 or 4 }
+  g.vo = Vo.new(g.mixer)
+  g.sfx = { scratch = Level.loadSample(g.mixer, "assets/audio/sfx/scratch.wav", true) }
   g.screen = Screen.new(J.display.virtual_width, J.display.virtual_height)
   g.clicks = {
     click = g.mixer:loadSample(Synth.click(RATE, false)),
@@ -138,6 +152,7 @@ function Game:idleAudio()
   self.mixer:setLoop(nil)
   self.mixer.onBlock = nil
   self.mixer.paused = false
+  self.vo:clear()
   self.timeline = false
   self.celebrate, self.finale, self.finaleAt, self.finaleVoice = nil, nil, nil, nil
 end
@@ -151,7 +166,10 @@ function Game:toTitle()
   self.lives = startLives(self.J)
   self.rounds, self.round, self.judge = {}, nil, nil
   self.locked = {}
+  self.restAt, self.titleT, self.nudges = self.time, 0, 0
   self:setStatus("BEAT EM UP", "text")
+  self:say("title")
+  self:say("press_start")
 end
 
 function Game:startLevel(index)
@@ -172,7 +190,26 @@ function Game:newGame()
   local from = self.song and math.max(1, math.min(tonumber(self.opts.from) or 1, #self.levels)) or 1
   -- starting part-way into a song: the levels before are already built
   for i = 1, from - 1 do self.locked[#self.locked + 1] = { part = self.song.parts[i], from = 0 } end
-  self:startLevel(from)
+  local lines = {}
+  if self.opts.device and not self.opts.autoplay then
+    -- how to play, the first time only
+    if not self.toldHow then
+      self.toldHow = true
+      lines[#lines + 1] = "howto_1"
+    end
+  end
+  self:leadIn(lines, from)
+end
+
+-- the lines said before the music: then level `from` starts (at once if none of them is said)
+function Game:leadIn(lines, from)
+  self:idleAudio()
+  local last
+  for _, name in ipairs(lines) do last = self:say(name) or last end
+  if not last then return self:startLevel(from) end
+  self.state = "lead_in"
+  self.leadFrom = from
+  self.leadUntil = self.time + (last - self.mixer.cursor) / RATE + 0.25
 end
 
 -- the level's backing track, from `atBeat`; in a song it comes in there but stays on the
@@ -198,6 +235,7 @@ function Game:beginTimeline(number, startBeat)
   self.resultUntil = nil
   startBeat = startBeat or math.max(0, self.round.byName.demo.from - (self.round.number == 1 and self.J.flow.count_in_beats or 0))
   self.mixer:reset(round(startBeat * self.fpb))
+  self.vo:clear()
   self.mixer.paused = false
   self:startBacking(self.song and self.round.byName.demo.from or 0)
   self.mixer.onBlock = function(f0, f1) self:schedule(f0, f1) end
@@ -356,6 +394,12 @@ function Game:heard()
   return self.mixer:clock() / RATE - self.J.timing.audio_offset_ms / 1000
 end
 
+-- a VO line, now or at a beat; lateBeats: drop it rather than say it that much later (the
+-- voice was still busy with the line before)
+function Game:say(name, atBeat, lateBeats)
+  return self.vo:say(name, self.J.song.vo_volume, atBeat and round(atBeat * self.fpb), lateBeats and round(lateBeats * self.fpb))
+end
+
 ------------------------------------------------------------------------
 -- feedback
 ------------------------------------------------------------------------
@@ -389,6 +433,8 @@ function Game:flash(pad, kind, color)
     f.dur, f.color = Li.miss_s, Li.miss_color
   elseif kind == "fail" then
     f.dur, f.color = Li.fail_s, Li.wrong_color
+  elseif kind == "pass" then
+    f.dur, f.color = Li.pass_s, Li.turn_color
   end
   self.flashes[#self.flashes + 1] = f
 end
@@ -434,6 +480,12 @@ end
 
 function Game:press(pad)
   self.pads[pad].held = true
+  -- the device has no start button: between games any pad starts one
+  local resting = self.state == "title" or self.state == "game_over" or self.state == "complete"
+  if self.opts.device and resting and self.time - (self.restAt or 0) >= REST_S then
+    self.pads[pad].downAt = self.time
+    return self:newGame()
+  end
   self:hit(pad)
 end
 
@@ -446,9 +498,13 @@ function Game:keypressed(key)
   if pad then return self:press(pad) end
   if key == "space" or key == "return" then
     if self.state == "title" or self.state == "game_over" or self.state == "complete" then self:newGame()
+    elseif self.state == "lead_in" then self:startLevel(self.leadFrom)
     elseif self.state == "finale" then self:finish() end
   elseif key == "p" and (self.state == "play" or self.state == "finale") then
-    self.mixer:setPaused(not self.mixer.paused)
+    local paused = not self.mixer.paused
+    self.mixer:setPaused(paused)
+    -- the mixer is what is paused, so these two have a source of their own
+    self.vo:aside(paused and "paused" or "resume", self.J.song.vo_volume * self.J.audio.master_volume)
   elseif key == "escape" and self.state ~= "title" then
     self:toTitle()
     return true
@@ -492,9 +548,13 @@ function Game:resolveRound()
   -- nothing can be scheduled before what the mixer has already mixed
   local from = math.max(r.finish, self.mixer.cursor / self.fpb)
   self.resultUntil = r.finish + J.flow.result_beats
-  -- a wrong guess: all four pads flash red
+  -- a wrong guess: all four pads flash red over a record scratch; a right one: green.
+  -- (Nothing is said until the level is cleared: the voice would take the player out of it.)
   if not passed then
     for i = 1, 4 do self:flash(i, "fail") end
+    if self.sfx.scratch then self.mixer:play(self.sfx.scratch, nil, J.audio.scratch_volume) end
+  elseif r.number < total then
+    for i = 1, 4 do self:flash(i, "pass") end
   end
   if passed or J.rules.on_fail == "continue" then
     -- a sloppy round carries on too (on_fail = continue): it just doesn't earn the round bonus
@@ -515,6 +575,7 @@ function Game:resolveRound()
     self.combo = 0
     if self.lives <= 0 then
       self:setStatus("GAME OVER", "bad")
+      self:say("game_over")
       self.pending = { kind = "game_over", at = r.finish + J.flow.result_beats }
     else
       self:setStatus("TRY AGAIN", "bad")
@@ -530,8 +591,9 @@ function Game:resolveRound()
 end
 
 -- The whole loop is built. From the end of the turn the pads strobe gold for song.clear_beats;
--- in a song the loop locks in (it plays on under everything after), the level's VO line comes
--- in, and then the next level starts on the same timeline, or after the last, the finale.
+-- in a song the loop locks in (it plays on under everything after), the voice says so
+-- ("Bass locked in!": locked_<level name>.wav, else "Level clear!") and then the level's own
+-- VO line, and the next level starts on the same timeline, or after the last, the finale.
 function Game:levelCleared(r)
   local J = self.J
   local at = r.finish
@@ -545,14 +607,14 @@ function Game:levelCleared(r)
   self.celebrate = { from = at, to = to }
   local part = self.song and self.song.parts[self.levelIndex]
   self:setStatus("LEVEL CLEAR!", "accent", part and (self.level.name:upper() .. " LOCKED IN") or nil)
+  local locked = "locked_" .. Vo.slug(self.level.name)
+  self:say(part and self.vo:has(locked) and locked or "level_clear", at + J.song.vo_beat)
   if not part then
     self.pending = { kind = "level_clear", at = self.celebrate.to }
     return
   end
   self:lockIn(part, at)
-  if part.voSample then
-    self.mixer:play(part.voSample, round((at + J.song.vo_beat) * self.fpb), J.song.vo_volume)
-  end
+  self.vo:play(part.voSample, J.song.vo_volume, round((at + J.song.vo_beat) * self.fpb))
   local to = self.celebrate.to
   if self.levelIndex < #self.levels then
     self.pending = { kind = "next_level", at = to }
@@ -573,12 +635,20 @@ function Game:finish()
   if self.songs and self.songIndex < #self.songs then
     self:loadSong(self.songIndex + 1)
     self.locked = {}
-    self:startLevel(1)
+    self:leadIn(self.opts.device and { "next_song" } or {}, 1)
     return
   end
+  self:complete()
+end
+
+-- everything is played
+function Game:complete()
   self:idleAudio()
   self.state = "complete"
+  self.restAt = self.time
   self:setStatus("ALL CLEAR!", "accent")
+  self:say("all_clear")
+  self:say("play_again")
 end
 
 function Game:advance(beat)
@@ -593,20 +663,45 @@ function Game:advance(beat)
   elseif p.kind == "finale" then
     self.state = "finale"
     self.finale = { from = p.at, to = p.at + self.song.finale.beats }
+    self:say("you_built_it", p.at)
+    self:say("play_along", p.at + 8)
   elseif p.kind == "song_done" then
     self:finish()
   elseif p.kind == "level_clear" then
     if self.levelIndex < #self.levels then
       self:startLevel(self.levelIndex + 1)
     else
-      self:idleAudio()
-      self.state = "complete"
-      self:setStatus("ALL CLEAR!", "accent")
+      self:complete()
     end
   elseif p.kind == "game_over" then
     self:idleAudio()
     self.state = "game_over"
+    self.restAt = self.time
     self:setStatus("GAME OVER", "bad")
+    self:say("play_again")
+  end
+end
+
+-- What the voice says as a round goes by, each once: the level and its part over a level's
+-- count-in, and "Go ahead." into a turn nobody has started. (The demo and the turn need no
+-- words: the lights say them.)
+function Game:roundCues(r, phase, beat)
+  r.said = r.said or {}
+  local function once(key)
+    if r.said[key] then return false end
+    r.said[key] = true
+    return true
+  end
+  if phase == "count" then
+    if r.number == 1 and not r.retry and once("level") then
+      local n = self.levelIndex
+      self:say((n > 1 and n == #self.levels) and "level_last" or ("level_" .. n))
+      self:say("part_" .. Vo.slug(self.level.name))
+    end
+  elseif phase == "play" then
+    if self.judge.next == 1 and self.judge:mistakes() == 0 and beat - r.byName.play.from >= WAITING_BEATS and once("waiting") then
+      self:say("waiting", nil, 2)
+    end
   end
 end
 
@@ -638,6 +733,7 @@ function Game:update(dt)
   self.time = self.time + dt
   local mx = self.mixer
   mx.gain = J.audio.master_volume
+  mx.duck = J.song.vo_duck
   if mx.loop then mx.loop.gain = J.audio.backing_volume * (self.level.backing and self.level.backing.gain or 1) end
   if self.finaleVoice then self.finaleVoice.gain = J.song.finale_volume * (self.song and self.song.finale and self.song.finale.gain or 1) end
   mx:pump()
@@ -663,6 +759,14 @@ function Game:update(dt)
     if self.introT >= J.flow.title_s then self:beginTimeline(1) end
   elseif self.state == "title" then
     self:setStatus("BEAT EM UP", "text", self.song and (self.song.name:upper() .. "  ·  press SPACE to start") or "press SPACE to start")
+    self.titleT = self.titleT + dt
+    if NUDGE_S[self.nudges + 1] and self.titleT >= NUDGE_S[self.nudges + 1] then
+      self.nudges = self.nudges + 1
+      self:say("idle_nudge")
+    end
+  elseif self.state == "lead_in" then
+    self:setStatus(self.song and self.song.name:upper() or "BEAT EM UP", "text", "SPACE to skip")
+    if self.time >= self.leadUntil then self:startLevel(self.leadFrom) end
   elseif self.state == "game_over" then
     self:setStatus("GAME OVER", "bad", ("score %d · SPACE to play again"):format(self.score))
   elseif self.state == "complete" then
@@ -686,6 +790,7 @@ function Game:update(dt)
       end
       if self.judge:done() then self:resolveRound() end
       local phase = r:phaseAt(beat)
+      if not r.resolved then self:roundCues(r, phase, beat) end
       local celebrating = self.celebrate and beat < self.celebrate.to
       if celebrating or (self.resultUntil and beat < self.resultUntil) then
         -- the gold strobe, or the last round's result, is still up
@@ -858,6 +963,12 @@ function Game:drawHud()
   local big = Fonts.get(T.font, T.hud_size)
   local small = Fonts.get(T.label_font, T.hint_size)
 
+  -- the device has no screen: with layout.show_text off only the key reminder is written
+  if not L.show_text then
+    if L.show_hint then text(small, "Q  W  /  A  S   or click the pads", 0, L.hint_y, W, "center", L.dim_color) end
+    return
+  end
+
   if self.state ~= "title" then
     text(big, tostring(self.score), L.hud_margin, L.title_y - 6, 400, "left", L.accent_color)
     local m = self:multiplier()
@@ -938,7 +1049,7 @@ end
 function Game:draw(x, y, w, h)
   local J = self.J
   self.screen:setViewport(x or 0, y or 0, w or love.graphics.getWidth(), h or love.graphics.getHeight())
-  self.screen:begin(J.layout.background)
+  self.screen:begin(Pads.background(J) or J.layout.background)
 
   local sx, sy = 0, 0
   if self.shakeAt then

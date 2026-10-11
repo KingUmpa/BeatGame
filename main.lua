@@ -38,7 +38,7 @@ function GameApp.load(args)
     return v ~= true and v or nil
   end
   local game = require("src.game.game").new({ level = arg("--level"), song = arg("--song"), from = tonumber(arg("--from")),
-    autoplay = util.hasArg(args, "--autoplay") })
+    autoplay = util.hasArg(args, "--autoplay"), device = true })
   local self = setmetatable({ game = game, trace = util.hasArg(args, "--trace") }, GameApp)
   if arg("--scenario") then game:scenario(arg("--scenario"))
   elseif util.hasArg(args, "--autoplay") then game:newGame() end

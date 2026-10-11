@@ -5,6 +5,7 @@
     "master_volume": 1,
     "metronome": "count_ins",
     "sample_volume": 1,
+    "scratch_volume": 0.8,
     "velocity_sensitivity": 0.35
   },
   "debug": {
@@ -62,7 +63,8 @@
     ],
     "board_size": 452,
     "board_x": 640,
-    "board_y": 484,
+    "board_y": 400,
+    "device_image": true,
     "dim_color": [
       0.45,
       0.47,
@@ -81,7 +83,7 @@
       1,
       0.6
     ],
-    "hint_y": 752,
+    "hint_y": 736,
     "hud_margin": 40,
     "key_label_color": [
       0.25,
@@ -91,6 +93,7 @@
     "pad_gap": 22,
     "show_hint": true,
     "show_key_labels": true,
+    "show_text": false,
     "status_y": 84,
     "text_color": [
       0.92,
@@ -119,6 +122,7 @@
       0.06
     ],
     "miss_s": 0.5,
+    "pass_s": 0.5,
     "press_level": 0,
     "turn_color": [
       0.2,
@@ -143,6 +147,8 @@
     ],
     "corner": 16,
     "highlight": 0.1,
+    "image_tint": 1,
+    "image_unlit": 0.92,
     "press_darken": 0.22,
     "press_in_s": 0.025,
     "press_out_s": 0.12,
@@ -189,7 +195,8 @@
     "locked_volume": 0.6,
     "tint": 0.9,
     "vo_beat": 1,
-    "vo_volume": 1
+    "vo_duck": 0.5,
+    "vo_volume": 0.8
   },
   "timing": {
     "audio_offset_ms": 0,

@@ -47,6 +47,25 @@ function tests.huntin_wabbits_builds_bass_then_synth_then_chops(T)
   end
 end
 
+function tests.the_voice_has_every_line_the_songs_need(T)
+  local Vo = require("src.game.vo")
+  T.eq(Vo.slug("Vocal Chops"), "vocal_chops")
+  T.eq(Vo.slug("Huntin' Wabbits"), "huntin_wabbits")
+  local names = { "title", "press_start", "idle_nudge", "howto_1", "next_song",
+    "waiting", "level_clear", "you_built_it", "play_along",
+    "all_clear", "play_again", "game_over", "paused", "resume" }
+  for _, path in ipairs(Song.list()) do
+    local song = Song.load(path)
+    for i, p in ipairs(song.parts) do
+      names[#names + 1] = (i > 1 and i == #song.parts) and "level_last" or ("level_" .. i)
+      names[#names + 1] = "part_" .. Vo.slug(p.level.name)
+      names[#names + 1] = "locked_" .. Vo.slug(p.level.name)
+    end
+  end
+  for _, n in ipairs(names) do T.ok(util.readFile(Vo.DIR .. n .. ".wav") ~= nil, "VO line " .. n .. ".wav is missing") end
+  T.ok(util.readFile("assets/audio/sfx/scratch.wav") ~= nil, "the record scratch is missing")
+end
+
 function tests.a_song_round_trips(T)
   local song = Song.load("songs/huntin_wabbits.json")
   local back = Song.normalize(json.decode(Song.toJson(song)), "x")
