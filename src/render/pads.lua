@@ -1,7 +1,14 @@
 -- src/render/pads.lua
--- The 2x2 drum pad board: grey rubber pads with RGB LEDs underneath. Everything about the
+-- The 2x2 drum pad board: rubber pads with RGB LEDs underneath. Everything about the
 -- look comes from juice (layout.*, pads.*, lights.*); what each pad is doing right now
--- comes from the caller:
+-- comes from the caller.
+--
+-- With layout.device_image on, the board is the picture of the device, table and shadow and
+-- all (assets/images/device_body.png, its pads in device_pads.png, where they are in
+-- device.json: all three cut from device.png by tools/make_device.py), each light tints its
+-- pad in the picture, and the screen's background is the picture's (Pads.background).
+-- Otherwise, or with those files missing, the board is drawn: grey pads on a plain body.
+--
 --
 --   Pads.draw(J, {
 --     pads = { [i] = { color = {r,g,b}, level = 0..2, press = 0..1, punch = 0..1, white = 0..1,
@@ -11,6 +18,7 @@
 --   })
 --   Pads.rects(J)            -> the four pad rectangles, in virtual pixels
 --   Pads.hit(J, x, y)        -> pad number under a virtual point, or nil
+--   Pads.background(J)       -> the background color that goes with the board, or nil
 --
 -- level is the light's brightness: 0 off, 1 full. The halo, the light leaking round the
 -- edge and the tint through the rubber all scale with it.
@@ -20,8 +28,54 @@ local Fonts = require("src.render.fonts")
 
 local Pads = {}
 
+-- the device's picture: { body, pads (images), quads, meta, box (the pads' bounding box) }
+local device
+local function loadDevice()
+  if device == nil then
+    device = false
+    local dir = "assets/images/"
+    local ok, d = pcall(function()
+      local meta = require("lib.json").decode(assert(love.filesystem.read(dir .. "device.json")))
+      local body, pads = love.graphics.newImage(dir .. "device_body.png"), love.graphics.newImage(dir .. "device_pads.png")
+      body:setFilter("linear", "linear"); pads:setFilter("linear", "linear")
+      local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+      local quads = {}
+      for i, p in ipairs(meta.pads) do
+        quads[i] = love.graphics.newQuad(p.x, p.y, p.w, p.h, pads:getDimensions())
+        x0, y0, x1, y1 = math.min(x0, p.x), math.min(y0, p.y), math.max(x1, p.x + p.w), math.max(y1, p.y + p.h)
+      end
+      assert(#quads == 4, "device.json: four pads")
+      return { body = body, pads = pads, quads = quads, meta = meta, box = { x = x0, y = y0, w = x1 - x0, h = y1 - y0 } }
+    end)
+    if ok then device = d else print("pads: no device picture (" .. tostring(d) .. ")") end
+  end
+  return device or nil
+end
+
+-- the picture's scale and where its top left goes: its pads span layout.board_size across,
+-- centered on the board's center
+local function devicePlace(J, dev)
+  local L = J.layout
+  local k = L.board_size / dev.box.w
+  return k, L.board_x - (dev.box.x + dev.box.w / 2) * k, L.board_y - (dev.box.y + dev.box.h / 2) * k
+end
+
+-- the color of the table the device's picture stands on: the screen's background, so the
+-- picture has no edge. nil with the drawn board.
+function Pads.background(J)
+  local dev = J.layout.device_image and love.graphics and loadDevice()
+  return dev and dev.meta.background or nil
+end
+
 function Pads.rects(J)
   local L = J.layout
+  local dev = L.device_image and love.graphics and loadDevice()
+  if dev then
+    local k, ox, oy = devicePlace(J, dev)
+    local out = {}
+    for i, p in ipairs(dev.meta.pads) do out[i] = { x = ox + p.x * k, y = oy + p.y * k, w = p.w * k, h = p.h * k } end
+    return out
+  end
   local S, gap = L.board_size, L.pad_gap
   local p = (S - gap) / 2
   local x0, y0 = L.board_x - S / 2, L.board_y - S / 2
@@ -77,8 +131,62 @@ local function rrect(mode, x, y, w, h, r)
   love.graphics.rectangle(mode, x, y, w, h, r, r, 12)
 end
 
+-- the board as the device's picture: each pad of the picture tinted by its light
+local function drawDevice(J, look, dev)
+  local L, P, Li = J.layout, J.pads, J.lights
+  local rects = Pads.rects(J)
+  local scale, ox, oy = devicePlace(J, dev)
+  love.graphics.push()
+  love.graphics.translate(look.shakeX or 0, look.shakeY or 0)
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.draw(dev.body, ox, oy, 0, scale, scale)
+
+  local glow = math.floor(Li.glow_size + 0.5)
+  for i, r in ipairs(rects) do
+    local s = look.pads[i] or {}
+    local c = s.color or Level.DEFAULT_COLORS[i]
+    local lvl = math.max(0, (s.level or 0) * Li.brightness)
+    local press = s.press or 0
+    local k = (1 - (1 - P.press_scale) * press) * (1 + J.feel.hit_punch * (s.punch or 0)) * (1 + (s.pop or 0))
+    local cx, cy = r.x + r.w / 2, r.y + r.h / 2
+
+    -- the halo, spilling onto the body round the pad
+    if lvl > 0 and Li.glow_strength > 0 then
+      local img = glowImage(math.floor(r.h + 0.5), math.floor(P.corner + 0.5), glow)
+      love.graphics.setBlendMode("add")
+      love.graphics.setColor(c[1], c[2], c[3], math.min(1, lvl * Li.glow_strength))
+      love.graphics.draw(img, cx, cy, 0, (r.w + 2 * glow) * k / img:getWidth(), (r.h + 2 * glow) * k / img:getHeight(),
+        img:getWidth() / 2, img:getHeight() / 2)
+      love.graphics.setBlendMode("alpha")
+    end
+
+    -- the pad: white rubber, unlit a little dimmed so a light has somewhere to go
+    local base = P.image_unlit * (1 - P.press_darken * press)
+    local t = math.min(1, (s.tint or P.image_tint) * math.min(1, lvl))
+    local white = s.white or 0
+    local face = {}
+    for j = 1, 3 do
+      local v = base + (c[j] - base) * t
+      face[j] = v + (1 - v) * white
+    end
+    love.graphics.setColor(face[1], face[2], face[3], 1)
+    local p = dev.meta.pads[i]
+    love.graphics.draw(dev.pads, dev.quads[i], cx, cy, 0, scale * k, scale * k, p.w / 2, p.h / 2)
+
+    if L.show_key_labels then
+      love.graphics.setFont(Fonts.get(J.type.label_font, J.type.label_size * k))
+      local lc = L.key_label_color
+      love.graphics.setColor(lc[1], lc[2], lc[3], 1)
+      love.graphics.print(Level.KEYS[i], cx - r.w * k / 2 + r.w * 0.08, cy - r.h * k / 2 + r.h * 0.07)
+    end
+  end
+  love.graphics.pop()
+end
+
 function Pads.draw(J, look)
   local L, P, Li = J.layout, J.pads, J.lights
+  local dev = L.device_image and loadDevice()
+  if dev then return drawDevice(J, look, dev) end
   local rects = Pads.rects(J)
   local sx, sy = look.shakeX or 0, look.shakeY or 0
   love.graphics.push()

@@ -18,6 +18,8 @@
 --   mx:play(s, atFrame, gain, choke, offset)  -- schedule a one-shot (atFrame >= mx.cursor),
 --                                             -- optionally starting `offset` frames in
 --   mx:stop(voice, atFrame)                   -- fade a voice out
+--   voice.over = true; mx.duck = 0.5          -- a voice-over: while one sounds, everything
+--                                             -- else plays at mx.duck (1 = no ducking)
 --   mx.onBlock = function(from, to) end       -- called before frames [from, to) are mixed
 --   mx:pump()                                 -- realtime: keep the device queue full
 --   mx:clock()                                -- frame the listener is hearing now
@@ -31,6 +33,7 @@ Mixer.__index = Mixer
 local FADE = 256        -- frames (~6 ms) to fade out a choked voice instead of clicking
 local LOOKAHEAD = 64    -- frames (~1.5 ms) the limiter sees ahead
 local CEILING = 10 ^ (-0.3 / 20)
+local DUCK_S = 0.08     -- seconds the rest takes to turn down under a voice-over, and back up
 
 function Mixer.new(opts)
   opts = opts or {}
@@ -43,6 +46,8 @@ function Mixer.new(opts)
   mx.loopMuted = false
   mx.voicesMuted = false
   mx.gain = opts.gain or 1
+  mx.duck = 1         -- level of everything else while a voice.over sounds
+  mx.duckNow = 1
   mx.onBlock = nil
   mx.mix = ffi.new("float[?]", mx.bufferFrames * 2)
   mx.peak = 0
@@ -172,27 +177,51 @@ function Mixer:mixRaw(n)
     end
   end
 
-  local keep = {}
-  for _, v in ipairs(self.voices) do
+  -- mixes a voice into the block; returns where it ends
+  local function mixVoice(v)
     local s = v.s
     local stopEnd = v.stopAt and (v.stopAt + FADE) or math.huge
-    local vEnd
-    if v.fx then
-      vEnd = self:mixFxVoice(v, out, from, to, stopEnd)
-    else
-      vEnd = math.min(v.start + s.frames - v.offset, stopEnd)
-      if not self.voicesMuted then
-        local a, b = math.max(from, v.start), math.min(to, vEnd)
-        local d, g, start, stopAt = s.data, v.gain, v.start - v.offset, v.stopAt
-        for f = a, b - 1 do
-          local gf = g
-          if stopAt and f >= stopAt then gf = g * (1 - (f - stopAt) / FADE) end
-          local i, j = (f - from) * 2, (f - start) * 2
-          out[i] = out[i] + d[j] * gf
-          out[i + 1] = out[i + 1] + d[j + 1] * gf
-        end
+    if v.fx then return self:mixFxVoice(v, out, from, to, stopEnd) end
+    local vEnd = math.min(v.start + s.frames - v.offset, stopEnd)
+    if not self.voicesMuted then
+      local a, b = math.max(from, v.start), math.min(to, vEnd)
+      local d, g, start, stopAt = s.data, v.gain, v.start - v.offset, v.stopAt
+      for f = a, b - 1 do
+        local gf = g
+        if stopAt and f >= stopAt then gf = g * (1 - (f - stopAt) / FADE) end
+        local i, j = (f - from) * 2, (f - start) * 2
+        out[i] = out[i] + d[j] * gf
+        out[i + 1] = out[i + 1] + d[j + 1] * gf
       end
     end
+    return vEnd
+  end
+
+  -- everything but the voice-overs first; it turns down under them (starting DUCK_S before
+  -- one that was scheduled ahead), then they are mixed on top at their own level
+  local ends, talking = {}, false
+  local ahead = to + DUCK_S * self.rate
+  for i, v in ipairs(self.voices) do
+    if v.over then
+      if v.start < ahead then talking = true end
+    else
+      ends[i] = mixVoice(v)
+    end
+  end
+  local target = talking and self.duck or 1
+  local d0 = self.duckNow
+  if d0 ~= 1 or target ~= 1 then
+    local step = n / (DUCK_S * self.rate)
+    local d1 = target > d0 and math.min(target, d0 + step) or math.max(target, d0 - step)
+    for i = 0, n - 1 do
+      local g = d0 + (d1 - d0) * (i + 1) / n
+      out[i * 2], out[i * 2 + 1] = out[i * 2] * g, out[i * 2 + 1] * g
+    end
+    self.duckNow = d1
+  end
+  local keep = {}
+  for i, v in ipairs(self.voices) do
+    local vEnd = ends[i] or mixVoice(v)
     if vEnd > to then keep[#keep + 1] = v end
   end
   self.voices = keep
@@ -385,6 +414,7 @@ function Mixer:reset(frame)
     self.ring[i * 2], self.ring[i * 2 + 1], self.need[i] = 0, 0, 1
   end
   self.ringPos, self.limGain, self.overCount, self.reduction = 0, 1, 0, 1
+  self.duckNow = 1
 end
 
 return Mixer

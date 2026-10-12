@@ -83,6 +83,21 @@ function tests.limiter_holds_the_ceiling_and_leaves_quiet_audio_alone(T)
 end
 
 -- an exclusive level: different samples, one group; a voice on the same frame isn't cut
+function tests.a_voice_over_turns_everything_else_down(T)
+  local mx = Mixer.new{ rate = 44100, bufferFrames = 256 }
+  mx.duck = 0.5
+  local music = mx:loadSample(sound(44100, 44100, function() return 0.4 end))
+  local line = mx:loadSample(sound(8820, 44100, function() return 0.2 end))
+  mx:play(music, 0, 1)
+  mx:play(line, 13230, 1).over = true        -- 0.3 s to 0.5 s
+  local left = run(mx, 44100)
+  T.near(left[4410], 0.4, 1e-4, "full level before")
+  T.near(left[13230], 0.4 * 0.5 + 0.2, 1e-3, "already down as the line starts")
+  T.near(left[17640], 0.4 * 0.5 + 0.2, 1e-4, "ducked under the line, which is not")
+  T.near(left[30870], 0.4, 1e-4, "and back up after it")
+  for f = 1, 44099 do T.ok(math.abs(left[f] - left[f - 1]) < 0.2 + 1e-4, "no jump at frame " .. f) end
+end
+
 function tests.shared_choke_cuts_a_different_sample(T)
   local mx = Mixer.new{ rate = 44100, bufferFrames = 512 }
   local a = mx:loadSample(sound(4000, 44100, function() return 0.25 end))

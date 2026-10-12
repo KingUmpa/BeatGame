@@ -49,6 +49,16 @@ def main(root, out):
         if isinstance(song.get("finale"), dict) and song["finale"].get("file"):
             add(song["finale"]["file"])
 
+    # the voice: every line in assets/audio/vo (src/game/vo.lua plays them by name)
+    vo = "assets/audio/vo"
+    for n in sorted(os.listdir(os.path.join(root, vo))):
+        if n.endswith(".wav"):
+            add(vo + "/" + n)
+
+    add("assets/audio/sfx/scratch.wav")
+    for n in ("device_body.png", "device_pads.png", "device.json"):
+        add("assets/images/" + n)
+
     levels = sorted(f for f in os.listdir(os.path.join(root, "levels")) if f.endswith(".json"))
     for f in levels:
         add("levels/" + f)
