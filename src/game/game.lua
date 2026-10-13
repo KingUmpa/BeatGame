@@ -434,7 +434,8 @@ function Game:flash(pad, kind, color)
   elseif kind == "fail" then
     f.dur, f.color = Li.fail_s, Li.wrong_color
   elseif kind == "pass" then
-    f.dur, f.color = Li.pass_s, Li.turn_color
+    -- the last press shows its own light for a moment first, then the green takes over
+    f.dur, f.color, f.at = Li.pass_s, Li.turn_color, self.time + Li.pass_delay_s
   end
   self.flashes[#self.flashes + 1] = f
 end
@@ -940,7 +941,7 @@ function Game:lightState()
       if lvl > 0 then offer(f.pad, color, lvl, Li.correct_white * math.min(1, lvl)) end
     else
       local k = 1 - dt / f.dur
-      if k > 0 then offer(f.pad, f.color or self.level.pads[f.pad].color, k) end
+      if dt >= 0 and k > 0 then offer(f.pad, f.color or self.level.pads[f.pad].color, k) end
     end
   end
   return out

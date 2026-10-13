@@ -122,6 +122,7 @@
       0.06
     ],
     "miss_s": 0.5,
+    "pass_delay_s": 0.15,
     "pass_s": 0.5,
     "press_level": 0,
     "turn_color": [

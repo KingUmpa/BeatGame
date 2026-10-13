@@ -180,6 +180,8 @@ local schema = {
       desc = "How long all four pads flash red when a guess is wrong (too many wrong presses, or stalling too long)." },
     { key = "lights.pass_s", type = "number", default = 0.5, min = 0, max = 3, step = 0.01,
       desc = "How long all four pads flash green (lights.turn_color) when a guess is right. 0 = no flash." },
+    { key = "lights.pass_delay_s", type = "number", default = 0.15, min = 0, max = 1, step = 0.01,
+      desc = "How long the last pressed pad shows its own light before the green flash takes over. 0 = straight away." },
     { key = "lights.miss_color", type = "color", default = { 0.6, 0.08, 0.06 },
       desc = "Color shown on the pad that was due when the player stalled too long (the wait or the grace ran out)." },
     { key = "lights.miss_s", type = "number", default = 0.5, min = 0, max = 3, step = 0.01,
