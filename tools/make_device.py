@@ -5,32 +5,37 @@
     assets/images/device.json       where the pads are in those two (pixels), and the color
                                     of the picture's border, which the game's background takes
 
-    python3 tools/make_device.py
+    python3 tools/make_device.py [picture.png]      (default: assets/images/device_simon.png)
 
-Needs numpy and Pillow. The picture must have a light background and light pads on a dark body.
+Needs numpy and Pillow. The picture must have a white or grey background and white pads on a
+body that is dark or colored (the black device.png, the translucent blue device_blue.png).
 """
-import json, os
+import json, os, sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR = os.path.join(ROOT, "assets/images")
-LIGHT = 110      # brighter than this is background or pad, darker is the body
+SOURCE = "device_simon.png"
+LIGHT = 110      # brighter than this (and not colored) is background or pad
 BODY = 70        # darker than this is surely the body (its shadow on the table is lighter)
+COLORED = 36     # so is anything this far from grey (max - min of r g b): a colored body
 FADE = 24        # pixels over which the last of the shadow fades out at the picture's edge
 
 
 def main():
-    src = Image.open(os.path.join(DIR, "device.png")).convert("RGB")
+    src = Image.open(sys.argv[1] if len(sys.argv) > 1 else os.path.join(DIR, SOURCE)).convert("RGB")
     W, H = src.size
-    dark = np.asarray(src.convert("L")) <= LIGHT
+    px = np.asarray(src).astype(int)
+    colored = px.max(axis=2) - px.min(axis=2) > COLORED
+    dark = (np.asarray(src.convert("L")) <= LIGHT) | colored
 
     # the background: what lies outside the body. The body is convex, so in every row and
     # column it is everything before the first dark pixel and after the last
     def beyond(d):
         seen = np.maximum.accumulate(d, axis=1)
         return ~(seen & np.maximum.accumulate(d[:, ::-1], axis=1)[:, ::-1])
-    body = np.asarray(src.convert("L")) <= BODY
+    body = (np.asarray(src.convert("L")) <= BODY) | colored
     outside = beyond(body) | beyond(body.T).T
     a = np.where(outside, 128, np.where(dark, 0, 255)).astype(np.uint8)
 
@@ -38,6 +43,10 @@ def main():
     # picture is cut in four round the middle of what remains: one pad a quarter
     inner = Image.fromarray(((a == 255) * 255).astype(np.uint8))
     solid = np.asarray(inner.filter(ImageFilter.MinFilter(15)).filter(ImageFilter.MaxFilter(15))) > 0
+    # (lettering on the body is light too, but nowhere near as big as a pad: only what is
+    # left of a much coarser opening, and what touches it, is a pad)
+    big = inner.filter(ImageFilter.MinFilter(61)).filter(ImageFilter.MaxFilter(61)).filter(ImageFilter.MaxFilter(15))
+    solid = solid & (np.asarray(big) > 0)
     ys, xs = np.nonzero(solid)
     cx, cy = (xs.min() + xs.max()) // 2, (ys.min() + ys.max()) // 2
     # the cuts go down the gaps between the pads: the emptiest column and row near the middle

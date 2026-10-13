@@ -69,13 +69,15 @@ if it would come too late. `song.vo_volume` is how loud.
 | When | Lines |
 |---|---|
 | The title | `title`, `press_start`; `idle_nudge` after 20 s and 60 s of nothing |
-| Before the music | `howto_1` (the first game only); `next_song` between songs |
+| Before the music | `howto_1`, `howto_strikes` (the first game only); `next_song` between songs |
 | A level's count-in | `level_1`, `level_2`, ... (`level_last` for a song's last), `part_<level name>` |
 | A turn nobody starts for 8 beats | `waiting` |
 | A round's result | nothing is said, so the player stays in the game: the pads flash green (right) or red over a record scratch (wrong) |
 | A level cleared | `locked_<level name>` (else `level_clear`), then the level's own line from the song file |
-| The finale | `you_built_it`, then `play_along` two bars in |
-| The end | `all_clear` or `game_over`, then `play_again` |
+| The finale | `you_built_it` |
+| A strike (a wrong guess) | `strike_1`, `strike_2`; a level cleared with strikes against it: `strikes_cleared` |
+| Out (the third strike) | `strike_3`, `game_over`, `reached_level_1` / `_2` / `_last`, `play_again` |
+| The end | `all_clear` (and `flawless` with no strikes all game), then `play_again` |
 | P | `paused`, `resume` |
 
 `<level name>` is the level's name in lower case with `_` for everything else
@@ -83,12 +85,13 @@ if it would come too late. `song.vo_volume` is how loud.
 `howto_2`, `howto_3`, `song_huntin_wabbits`, `watch`, `your_turn`, `perfect`, `nice`, `try_again`, `too_slow` and `keep_going` are recorded
 but not said: the lights say them.
 
-**The board** is the picture of the device, `assets/images/device.png`, table and shadow and
+**The board** is the picture of the device, `assets/images/device_simon.png`, table and shadow and
 all, with each light tinting its pad in the picture and spilling onto the body round it
 (`layout.device_image`; off = the drawn grey pads on `layout.background`). The screen's
-background takes the color of the picture's border, so the picture has no edge. After changing the picture, `python3 tools/make_device.py` cuts it
+background takes the color of the picture's border, so the picture has no edge. `python3 tools/make_device.py [picture.png]` cuts a picture
 into the body, the pads and where they are (`device_body.png`, `device_pads.png`,
-`device.json`): it wants a light background and light pads on a dark body. `pads.image_unlit`
+`device.json`): it wants a white or grey background and white pads on a dark or colored body
+(`device.png`, the black one, and `device_blue.png` work too; lettering on the body is fine). `pads.image_unlit`
 is how bright the pads are with no light on.
 
 **The screen** shows only the pads and the key reminder (`layout.show_hint`). The written HUD
@@ -96,6 +99,14 @@ is how bright the pads are with no light on.
 screen; `layout.show_text` in the juice editor turns it back on.
 The scratch is `assets/audio/sfx/scratch.wav` (`audio.scratch_volume`), a moment of the song's
 track dragged back and forth by `tools/make_scratch.py`.
+
+**Between games** it isn't silent: on the title, under the spoken lead-in and after a game
+the song's backing track plays quietly (`audio.idle_volume`), turned down further under the
+voice like everything else.
+
+A new recording of the voice is cut into its lines by `python3 tools/clip_vo.py recording.mp3`
+(every line of its `LINES`, in order, with a pause between them); `assets/audio/vo/previous/`
+is the set of lines from before the last one.
 
 **A round**, in beats on the level's tempo:
 
@@ -134,7 +145,8 @@ round has and each adds.) The pattern runs to the end of the bar its last button
   the bass plays at 48% there).
 - **After the last level** the song's full track plays from its start and the pads go off in
   time with it: the bottom pads ride its low end, the top pads its highs, a white flash on
-  every bar (`song.finale_*`). The pads still play. Space finishes.
+  every bar (`song.finale_*`). The pads still play. After `song.finale_seconds` (16) it fades
+  out and the game wraps up (ALL CLEAR); 0 plays the whole track. Space finishes it early.
 
 The loops stay in time because they share one grid from the song's first beat: a level n beats
 long always plays its beat (song beat mod n), and each round's demo starts on a multiple of
@@ -155,7 +167,7 @@ often carry 100 ms of it) is skipped, so a press sounds the moment it lands.
 - **Correct:** the pad that's next plays its button's notes, keeping their spacing.
   Finishing the sequence is PERFECT!, or NICE! if a wrong press was forgiven.
 - **Wrong:** any other pad is a wrong press and plays that pad's sound mangled. You carry on
-  from where you were; one more than `rules.mistakes_allowed` (1) and the guess is wrong.
+  from where you were; one more than `rules.mistakes_allowed` and the guess is wrong (it is 0: the first wrong press is a strike).
 - **Too slow:** you have `flow.wait_beats` (16) from the green flash to start. Once you've
   started, stalling gives the guess up: `flow.grace_beats` (4) past when the next button
   would be due if you were playing in time. The pad that was due flashes red.
@@ -163,8 +175,10 @@ often carry 100 ms of it) is skipped, so a press sounds the moment it lands.
   straight to the gold strobe instead.
 - **A wrong guess** flashes all four pads red (`lights.fail_s`) over a record scratch and you play that round again
   (TRY AGAIN, `rules.on_fail = retry_round`): the same demo, the same sequence, until you get
-  it. You never move on without getting it right. There are no lives (`rules.lives = 0`);
-  set lives to bring back game over. (`restart_level` sends you back to the level's first
+  it. You never move on without getting it right. Each wrong guess is a strike, and the third
+  (`rules.lives = 3`) is game over: back to the title, and the next game starts from the first
+  level. Clearing a level wipes its strikes. (`rules.lives = 0`: no strikes, as many tries as
+  it takes. `restart_level` sends you back to the level's first
   round instead; `continue` carries on to the next round anyway, just scoring less.)
 - **Notes outside every button** play along on their own (once, from the green flash, until
   your turn is over), or stay silent; that's a per-level setting.

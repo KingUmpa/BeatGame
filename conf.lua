@@ -50,7 +50,7 @@ function love.conf(t)
     return
   end
 
-  t.window.title = "BeatEmUp"
+  t.window.title = "Beat Builder Demo"
   t.window.width = 1280
   t.window.height = 800
   t.window.minwidth = 320
@@ -58,6 +58,7 @@ function love.conf(t)
   t.window.resizable = true
   t.window.vsync = 0   -- main.lua's loop paces drawing itself and polls input every ~1 ms
   t.window.msaa = 4
+  t.window.highdpi = true   -- a Retina display's own pixels, not points blown up 2x
   t.modules.joystick = false
   t.modules.touch = false
   t.modules.video = false

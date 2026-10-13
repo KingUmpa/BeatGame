@@ -48,6 +48,7 @@ local CHASE = { 1, 2, 4, 3 }   -- clockwise round the board: Q W S A
 local WAITING_BEATS = 8        -- into a turn nobody has started: "Go ahead."
 local NUDGE_S = { 20, 60 }     -- on the title with nothing pressed: "Still there?"
 local REST_S = 1               -- a pad starts the game only this long after the last one ended
+local FINALE_FADE_S = 1        -- the finale's fade out, after song.finale_seconds of it
 
 local function round(x) return math.floor(x + 0.5) end
 local function db(x) return 10 ^ (x / 20) end
@@ -153,8 +154,22 @@ function Game:idleAudio()
   self.mixer.onBlock = nil
   self.mixer.paused = false
   self.vo:clear()
+  self.idling = nil
   self.timeline = false
   self.celebrate, self.finale, self.finaleAt, self.finaleVoice = nil, nil, nil, nil
+end
+
+-- between games it isn't silent: the song's backing track (the first of its levels that has
+-- one; else this level's), quietly (audio.idle_volume), under whatever the voice has to say
+function Game:idleMusic()
+  if self.J.audio.idle_volume <= 0 then return end
+  local sample, gain = self.audio and self.audio.backing, self.level.backing and self.level.backing.gain
+  for _, p in ipairs(self.song and self.song.parts or {}) do
+    if p.audio.backing then sample, gain = p.audio.backing, p.level.backing.gain; break end
+  end
+  if not sample then return end
+  self.mixer:setLoop(sample, 0, self.mixer.cursor)
+  self.idling = gain or 1
 end
 
 function Game:toTitle()
@@ -167,6 +182,7 @@ function Game:toTitle()
   self.rounds, self.round, self.judge = {}, nil, nil
   self.locked = {}
   self.restAt, self.titleT, self.nudges = self.time, 0, 0
+  self:idleMusic()
   self:setStatus("BEAT EM UP", "text")
   self:say("title")
   self:say("press_start")
@@ -190,12 +206,14 @@ function Game:newGame()
   local from = self.song and math.max(1, math.min(tonumber(self.opts.from) or 1, #self.levels)) or 1
   -- starting part-way into a song: the levels before are already built
   for i = 1, from - 1 do self.locked[#self.locked + 1] = { part = self.song.parts[i], from = 0 } end
+  self.struck = false
   local lines = {}
   if self.opts.device and not self.opts.autoplay then
     -- how to play, the first time only
     if not self.toldHow then
       self.toldHow = true
       lines[#lines + 1] = "howto_1"
+      if self.J.rules.lives > 0 then lines[#lines + 1] = "howto_strikes" end
     end
   end
   self:leadIn(lines, from)
@@ -207,6 +225,7 @@ function Game:leadIn(lines, from)
   local last
   for _, name in ipairs(lines) do last = self:say(name) or last end
   if not last then return self:startLevel(from) end
+  self:idleMusic()
   self.state = "lead_in"
   self.leadFrom = from
   self.leadUntil = self.time + (last - self.mixer.cursor) / RATE + 0.25
@@ -572,14 +591,17 @@ function Game:resolveRound()
       self.pending = { kind = "round", at = r.finish, round = Round.new(self.prep, J, r.number + 1, from, self:align()) }
     end
   else
+    -- a strike (rules.lives of them and the game is over; a cleared level wipes them)
     self.lives = self.lives - 1
+    self.struck = true
     self.combo = 0
     if self.lives <= 0 then
+      -- the last one is called once the music has stopped, with the rest of the bad news
       self:setStatus("GAME OVER", "bad")
-      self:say("game_over")
       self.pending = { kind = "game_over", at = r.finish + J.flow.result_beats }
     else
       self:setStatus("TRY AGAIN", "bad")
+      if J.rules.lives > 0 then self:say("strike_" .. (J.rules.lives - self.lives), nil, 2) end
       local number = J.rules.on_fail == "restart_level" and 1 or r.number
       self.pending = { kind = "round", at = r.finish, round = Round.new(self.prep, J, number, from, self:align()) }
       self.pending.round.retry = true
@@ -616,6 +638,9 @@ function Game:levelCleared(r)
   end
   self:lockIn(part, at)
   self.vo:play(part.voSample, J.song.vo_volume, round((at + J.song.vo_beat) * self.fpb))
+  -- a clean slate for the next level
+  if self.lives < startLives(J) and self.levelIndex < #self.levels then self:say("strikes_cleared") end
+  self.lives = startLives(J)
   local to = self.celebrate.to
   if self.levelIndex < #self.levels then
     self.pending = { kind = "next_level", at = to }
@@ -648,7 +673,9 @@ function Game:complete()
   self.state = "complete"
   self.restAt = self.time
   self:setStatus("ALL CLEAR!", "accent")
+  self:idleMusic()
   self:say("all_clear")
+  if self.J.rules.lives > 0 and not self.struck then self:say("flawless") end
   self:say("play_again")
 end
 
@@ -663,9 +690,11 @@ function Game:advance(beat)
     self:continueLevel(self.levelIndex + 1, p.at)
   elseif p.kind == "finale" then
     self.state = "finale"
-    self.finale = { from = p.at, to = p.at + self.song.finale.beats }
+    -- the full track, or just a taste of it (song.finale_seconds) faded out at the end
+    local beats, S = self.song.finale.beats, self.J.song
+    if S.finale_seconds > 0 then beats = math.min(beats, (S.finale_seconds + FINALE_FADE_S) / self.spb) end
+    self.finale = { from = p.at, to = p.at + beats, fade = S.finale_seconds > 0 }
     self:say("you_built_it", p.at)
-    self:say("play_along", p.at + 8)
   elseif p.kind == "song_done" then
     self:finish()
   elseif p.kind == "level_clear" then
@@ -679,6 +708,12 @@ function Game:advance(beat)
     self.state = "game_over"
     self.restAt = self.time
     self:setStatus("GAME OVER", "bad")
+    self:idleMusic()
+    -- out: the last strike, how far they got, and how to go again (from the beginning)
+    local n = self.levelIndex
+    self:say("strike_" .. self.J.rules.lives)
+    self:say("game_over")
+    self:say((n > 1 and n == #self.levels) and "reached_level_last" or ("reached_level_" .. n))
     self:say("play_again")
   end
 end
@@ -735,8 +770,19 @@ function Game:update(dt)
   local mx = self.mixer
   mx.gain = J.audio.master_volume
   mx.duck = J.song.vo_duck
-  if mx.loop then mx.loop.gain = J.audio.backing_volume * (self.level.backing and self.level.backing.gain or 1) end
-  if self.finaleVoice then self.finaleVoice.gain = J.song.finale_volume * (self.song and self.song.finale and self.song.finale.gain or 1) end
+  if mx.loop and self.idling then
+    mx.loop.gain = J.audio.idle_volume * self.idling
+  elseif mx.loop then
+    mx.loop.gain = J.audio.backing_volume * (self.level.backing and self.level.backing.gain or 1)
+  end
+  if self.finaleVoice then
+    local g = J.song.finale_volume * (self.song and self.song.finale and self.song.finale.gain or 1)
+    local f = self.finale
+    if f and f.fade and self.timeline then
+      g = g * math.max(0, math.min(1, (f.to * self.spb - self:heard()) / FINALE_FADE_S))
+    end
+    self.finaleVoice.gain = g
+  end
   mx:pump()
 
   for i = 1, 4 do

@@ -1,6 +1,8 @@
 -- src/render/screen.lua
 -- The game draws at a fixed virtual size into a canvas, which is scaled (letterboxed) into
--- a viewport: the whole window in the game, a pane in the juice editor.
+-- a viewport: the whole window in the game, a pane in the juice editor. The canvas has as
+-- many pixels as the viewport shows it with (a bigger window or a Retina display: more), so
+-- it is never blown up.
 --
 --   local s = Screen.new(1280, 800)
 --   s:setViewport(x, y, w, h)
@@ -12,9 +14,15 @@ Screen.__index = Screen
 
 function Screen.new(w, h)
   local s = setmetatable({ W = w, H = h }, Screen)
-  s.canvas = love.graphics.newCanvas(w, h, { msaa = 4 })
   s:setViewport(0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   return s
+end
+
+-- the canvas's pixels per virtual pixel: the viewport's scale times the display's, in
+-- quarter steps (so dragging a window's edge doesn't rebuild it every frame), 1 to 4
+local function density(scale)
+  local d = math.ceil(scale * love.graphics.getDPIScale() * 4 - 1e-6) / 4
+  return math.max(1, math.min(4, d))
 end
 
 function Screen:setViewport(x, y, w, h)
@@ -22,6 +30,12 @@ function Screen:setViewport(x, y, w, h)
   self.scale = math.min(w / self.W, h / self.H)
   self.ox = x + (w - self.W * self.scale) / 2
   self.oy = y + (h - self.H * self.scale) / 2
+  local d = density(self.scale)
+  if d ~= self.density then
+    self.density = d
+    if self.canvas then self.canvas:release() end
+    self.canvas = love.graphics.newCanvas(self.W, self.H, { msaa = 4, dpiscale = d })
+  end
 end
 
 function Screen:begin(bg)

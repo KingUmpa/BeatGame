@@ -36,8 +36,13 @@ local function loadDevice()
     local dir = "assets/images/"
     local ok, d = pcall(function()
       local meta = require("lib.json").decode(assert(love.filesystem.read(dir .. "device.json")))
-      local body, pads = love.graphics.newImage(dir .. "device_body.png"), love.graphics.newImage(dir .. "device_pads.png")
-      body:setFilter("linear", "linear"); pads:setFilter("linear", "linear")
+      -- mipmaps: the picture is drawn at about half its size, and smaller in a small window
+      local body = love.graphics.newImage(dir .. "device_body.png", { mipmaps = true })
+      local pads = love.graphics.newImage(dir .. "device_pads.png", { mipmaps = true })
+      for _, img in ipairs({ body, pads }) do
+        img:setFilter("linear", "linear")
+        img:setMipmapFilter("linear")
+      end
       local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
       local quads = {}
       for i, p in ipairs(meta.pads) do

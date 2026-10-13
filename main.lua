@@ -31,8 +31,8 @@ GameApp.__index = GameApp
 function GameApp.load(args)
   local J = Juice.data
   love.window.setMode(J.display.window_width, J.display.window_height,
-    { resizable = true, vsync = 0, msaa = 4, minwidth = 320, minheight = 240, fullscreen = J.display.fullscreen, fullscreentype = "desktop" })
-  love.window.setTitle("BeatEmUp")
+    { resizable = true, vsync = 0, msaa = 4, minwidth = 320, minheight = 240, fullscreen = J.display.fullscreen, fullscreentype = "desktop", highdpi = true })
+  love.window.setTitle("Beat Builder Demo")
   local function arg(name)
     local v = util.argValue(args, name, nil)
     return v ~= true and v or nil

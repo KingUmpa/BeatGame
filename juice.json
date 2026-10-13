@@ -2,6 +2,7 @@
   "audio": {
     "backing_volume": 0.75,
     "click_volume": 0.5,
+    "idle_volume": 0.4,
     "master_volume": 1,
     "metronome": "count_ins",
     "sample_volume": 1,
@@ -164,8 +165,8 @@
   },
   "rules": {
     "extra_press_is_mistake": true,
-    "lives": 0,
-    "mistakes_allowed": 1,
+    "lives": 3,
+    "mistakes_allowed": 0,
     "on_fail": "retry_round"
   },
   "schema_version": 1,
@@ -191,6 +192,7 @@
     "finale_level": 1.5,
     "finale_react": 0.6,
     "finale_steps_per_beat": 4,
+    "finale_seconds": 16,
     "finale_volume": 1,
     "finale_white": 0.5,
     "locked_volume": 0.6,
