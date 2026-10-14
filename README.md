@@ -25,7 +25,7 @@ There are three programs:
 |---|---|
 | `songs/` | song definitions (`<name>.json`): the levels in order, VO lines, finale |
 | `levels/` | level files: `<name>.json` + its `.mid` (written by the level editor) |
-| `assets/audio/songs/<song>/` | the song's tracks: `full_cropped.wav` (the finale), `full.wav` (the whole track), `instrumental.wav`, `instrumental_loop.wav` (a level's backing) |
+| `assets/audio/songs/<song>/` | the song's tracks: `full_cropped.wav` (the finale), `full_RADIO_EDIT.wav` (the radio edit it is cut from), `full.wav` (the whole original track), `instrumental.wav`, `instrumental_loop.wav` (a level's backing) |
 | `assets/audio/samples/<set>/` | the one-shot sounds keys play (`bass/`, `synth/`, `vocal_chops/`) |
 | `assets/audio/vo/` | the voice-over lines |
 | `assets/midi/` | source MIDI loops a new level starts from |
@@ -324,12 +324,14 @@ plays every level in `levels/` in file-name order.
 | 2 Synth | `huntin_wabbits_synth` | `assets/midi/synth_loop.mid` (8 bars): F1 G1 A1 B1 C2 D2 E2 on `F` `DG` `A` `B` `C` `DG` `E`. Exclusive, no metronome, VO "great" | bars 1-2, one per note, the G+D chord as one (5) |
 | 3 Vocal Chops | `01_huntin_wabbits` | the chops level from before, no metronome, still over the No Samples backing. VO "amazing" | yours |
 
-Then the finale: `assets/audio/songs/huntin_wabbits/full_cropped.wav` (about 315 beats). It is the
-full track (`full.wav`) cut at its beat 25, 13.28 s in, a quiet dip in the build-up (the singer
-breathes in at beat 37), so most of the 20 seconds of build-up are skipped. The cut is on the track's
-beat grid (it runs at exactly 114 BPM, its beat 0 at 0.12 s) with a 20 ms fade-in, and
+Then the finale: `assets/audio/songs/huntin_wabbits/full_cropped.wav` (about 311 beats). It is the
+radio edit (`full_RADIO_EDIT.wav`) cut at its beat 25, 13.15 s in (frame 579752), a quiet dip in the
+build-up (the singer breathes in at beat 37), so most of the 20 seconds of build-up are skipped. The
+cut is on the track's beat grid (it runs at exactly 114 BPM) with a 20 ms linear fade-in, and
 `"beat": 3` in the song file puts the first bar line, where the finale's lights start, on beat 4
-of the file.
+of the file. The radio edit is the original (`full.wav`, beat 0 at 0.12 s) a 16th note (5803 frames)
+earlier all the way through, with a 2 s shorter fade-out, so this is the same place the original
+was cut (its frame 585555, 13.28 s).
 
 The bass and synth samples are in `assets/audio/samples/bass/` and `synth/`. There is no D synth sample, so D2
 plays `synth/DG.wav` too; `A_Shaped.wav` isn't used yet (R over a key's row picks it).
