@@ -5,7 +5,7 @@
     assets/images/device.json       where the pads are in those two (pixels), and the color
                                     of the picture's border, which the game's background takes
 
-    python3 tools/make_device.py [picture.png]      (default: assets/images/device_simon.png)
+    python3 tools/make_device.py [picture.png]      (default: assets/images/device_beatbuilder.png)
 
 Needs numpy and Pillow. The picture must have a white or grey background and white pads on a
 body that is dark or colored (the black device.png, the translucent blue device_blue.png).
@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR = os.path.join(ROOT, "assets/images")
-SOURCE = "device_simon.png"
+SOURCE = "device_beatbuilder.png"
 LIGHT = 110      # brighter than this (and not colored) is background or pad
 BODY = 70        # darker than this is surely the body (its shadow on the table is lighter)
 COLORED = 36     # so is anything this far from grey (max - min of r g b): a colored body

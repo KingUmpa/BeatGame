@@ -85,7 +85,7 @@ if it would come too late. `song.vo_volume` is how loud.
 `howto_2`, `howto_3`, `song_huntin_wabbits`, `watch`, `your_turn`, `perfect`, `nice`, `try_again`, `too_slow` and `keep_going` are recorded
 but not said: the lights say them.
 
-**The board** is the picture of the device, `assets/images/device_simon.png`, table and shadow and
+**The board** is the picture of the device, `assets/images/device_beatbuilder.png`, table and shadow and
 all, with each light tinting its pad in the picture and spilling onto the body round it
 (`layout.device_image`; off = the drawn grey pads on `layout.background`). The screen's
 background takes the color of the picture's border, so the picture has no edge. `python3 tools/make_device.py [picture.png]` cuts a picture
